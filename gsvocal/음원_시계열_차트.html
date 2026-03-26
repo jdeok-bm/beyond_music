@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>음원 매출 시계열 분석</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0f13;
+    --surface: #16181f;
+    --surface2: #1d2029;
+    --border: #2a2d38;
+    --text: #e4e6ed;
+    --muted: #7a7e8f;
+    --accent-sug: #3b82f6;
+    --accent-ori: #f59e0b;
+    --accent-sug-glow: rgba(59,130,246,0.18);
+    --accent-ori-glow: rgba(245,158,11,0.18);
+  }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 36px 28px;
+  }
+
+  h1 { font-size: 18px; font-weight: 500; letter-spacing: -0.3px; margin-bottom: 5px; }
+  .subtitle { font-size: 12px; color: var(--muted); margin-bottom: 28px; }
+
+  #loading {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--muted); padding: 40px 0;
+  }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: #4ade80;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+  .tab {
+    padding: 7px 16px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--muted); font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer; transition: all .15s;
+  }
+  .tab:hover { border-color: #44475a; color: var(--text); }
+  .tab.active { background: var(--surface2); border-color: #4ade80; color: #4ade80; }
+
+  .metric-toggle { display: flex; gap: 4px; margin-bottom: 20px; }
+  .mtog {
+    padding: 5px 14px; border-radius: 5px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer; transition: all .15s;
+  }
+  .mtog.active { background: var(--surface2); border-color: #555; color: var(--text); }
+
+  .chart-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 24px 20px 16px;
+  }
+  .chart-header { margin-bottom: 18px; }
+  .chart-title { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+  .chart-artist { font-size: 12px; color: var(--muted); }
+
+  .legend { display: flex; gap: 18px; margin-top: 14px; flex-wrap: wrap; padding: 0 4px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); }
+  .legend-line { width: 22px; height: 2px; border-radius: 2px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+  #tooltip {
+    position: fixed; z-index: 999;
+    background: #1a1c26; border: 1px solid #30334a;
+    border-radius: 10px; padding: 14px 16px;
+    font-size: 12px; pointer-events: none;
+    min-width: 230px; max-width: 310px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+    display: none; line-height: 1.65;
+  }
+  #tooltip .tt-date { font-size: 11px; color: var(--muted); margin-bottom: 7px; font-family: 'DM Mono', monospace; }
+  #tooltip .tt-value { font-size: 20px; font-weight: 700; color: #4ade80; margin-bottom: 2px; font-family: 'DM Mono', monospace; }
+  #tooltip .tt-label { font-size: 10px; color: var(--muted); margin-bottom: 10px; }
+  #tooltip .tt-event {
+    background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-top: 8px;
+    border-left: 3px solid var(--border);
+  }
+  #tooltip .tt-event.sug { border-left-color: var(--accent-sug); }
+  #tooltip .tt-event.ori { border-left-color: var(--accent-ori); }
+  #tooltip .tt-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px; margin-bottom: 6px; letter-spacing: 0.4px;
+  }
+  #tooltip .tt-badge.sug { background: var(--accent-sug-glow); color: var(--accent-sug); border: 1px solid var(--accent-sug); }
+  #tooltip .tt-badge.ori { background: var(--accent-ori-glow); color: var(--accent-ori); border: 1px solid var(--accent-ori); }
+  #tooltip .tt-cname { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  #tooltip .tt-stats { display: flex; gap: 16px; }
+  #tooltip .tt-stat-val { font-size: 13px; font-weight: 600; }
+  #tooltip .tt-stat-lbl { font-size: 10px; color: var(--muted); }
+
+  #error-msg {
+    display: none; background: #1e1215; border: 1px solid #5c2d3a;
+    border-radius: 8px; padding: 18px 22px; font-size: 13px; color: #f87171;
+    margin-top: 16px; line-height: 1.8;
+  }
+  #error-msg code {
+    background: #2a1520; padding: 2px 6px; border-radius: 4px;
+    font-family: 'DM Mono', monospace; font-size: 12px;
+  }
+  #error-msg strong { color: #fca5a5; }
+</style>
+</head>
+<body>
+
+<h1>음원 매출 시계열 분석</h1>
+<p class="subtitle">콘텐츠 발행일 마커에 마우스를 올리면 콘텐츠 정보가 표시됩니다&nbsp; |&nbsp; 파란 점선 = 수급&nbsp;&nbsp;주황 점선 = 오리지널</p>
+
+<div id="loading"><div class="spinner"></div>데이터 로딩 중…</div>
+<div id="error-msg"></div>
+
+<div id="main" style="display:none">
+  <div class="tabs" id="tabs"></div>
+  <div class="metric-toggle">
+    <button class="mtog active" data-metric="revenue">매출</button>
+    <button class="mtog" data-metric="streams">스트리밍</button>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-header">
+      <div class="chart-title" id="chartTitle"></div>
+      <div class="chart-artist" id="chartArtist"></div>
+    </div>
+    <canvas id="mainChart" height="110"></canvas>
+    <div class="legend" id="legend"></div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ─── CSV 파일명 (HTML과 같은 폴더에 위치) ────────────────────────────
+const CSV_FILE = 'music_data.csv';
+// ─────────────────────────────────────────────────────────────────────
+
+let DATA = {};
+let currentKey = '';
+let currentMetric = 'revenue';
+let chartInstance = null;
+
+// 1. CSV 로드
+function loadCSV() {
+  Papa.parse(CSV_FILE, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: ({ data }) => buildData(data),
+    error: (err) => showError(err.message)
+  });
+}
+
+// 2. 데이터 구조화
+function buildData(rows) {
+  const map = {};
+  rows.forEach(r => {
+    const key = `${r.title}||${r.artist}`;
+    if (!map[key]) map[key] = { dates:[], revenues:[], streams:[], events:[] };
+    const d = map[key];
+    d.dates.push(r.collected_date);
+
+    const rev = (r.revenue === '' || r.revenue == null) ? null : parseFloat(r.revenue);
+    d.revenues.push(rev === 0 ? null : rev);
+
+    const str = (r.total_streams === '' || r.total_streams == null) ? null : parseInt(r.total_streams);
+    d.streams.push(str);
+
+    if (r.type && r.type.trim() !== '') {
+      d.events.push({
+        date: r.collected_date,
+        type: r.type.trim(),
+        content_name: r.content_name || '',
+        view: parseInt(r.view) || 0,
+        like: parseInt(r.like_cnt) || 0,
+        comment: parseInt(r.comment) || 0
+      });
+    }
+  });
+  DATA = map;
+  init();
+}
+
+// 3. UI 초기화
+function init() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+
+  const keys = Object.keys(DATA);
+  currentKey = keys[0];
+
+  const tabsEl = document.getElementById('tabs');
+  keys.forEach((k, i) => {
+    const [title, artist] = k.split('||');
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (i === 0 ? ' active' : '');
+    btn.textContent = `${title} — ${artist}`;
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      currentKey = k;
+      renderChart();
+    });
+    tabsEl.appendChild(btn);
+  });
+
+  document.querySelectorAll('.mtog').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mtog').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMetric = btn.dataset.metric;
+      renderChart();
+    });
+  });
+
+  renderChart();
+}
+
+// 4. 이벤트 날짜 맵
+function getEventMap(key) {
+  const m = {};
+  DATA[key].events.forEach(e => { m[e.date] = e; });
+  return m;
+}
+
+// 5. 수직선 + 삼각형 플러그인
+const markerPlugin = {
+  id: 'eventMarkers',
+  afterDatasetsDraw(chart) {
+    if (!DATA[currentKey]) return;
+    const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+    const song = DATA[currentKey];
+    const eventMap = getEventMap(currentKey);
+    song.dates.forEach((d, i) => {
+      const ev = eventMap[d];
+      if (!ev) return;
+      const isSug = ev.type === '수급';
+      const xPos = x.getPixelForValue(i);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(xPos, top);
+      ctx.lineTo(xPos, bottom);
+      ctx.strokeStyle = isSug ? 'rgba(59,130,246,0.5)' : 'rgba(245,158,11,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(xPos, top + 2);
+      ctx.lineTo(xPos - 5, top + 12);
+      ctx.lineTo(xPos + 5, top + 12);
+      ctx.closePath();
+      ctx.fillStyle = isSug ? '#3b82f6' : '#f59e0b';
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+};
+Chart.register(markerPlugin);
+
+// 6. 차트 렌더
+function renderChart() {
+  const song = DATA[currentKey];
+  if (!song) return;
+  const [title, artist] = currentKey.split('||');
+  document.getElementById('chartTitle').textContent = title;
+  document.getElementById('chartArtist').textContent = artist;
+
+  const isRevenue = currentMetric === 'revenue';
+  const values = isRevenue ? song.revenues : song.streams;
+  const eventMap = getEventMap(currentKey);
+
+  const tickLabels = song.dates.map(d => {
+    const [y, m, day] = d.split('-');
+    return day === '01' ? `${y.slice(2)}.${m}` : '';
+  });
+
+  if (chartInstance) chartInstance.destroy();
+
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 420);
+  grad.addColorStop(0, 'rgba(74,222,128,0.15)');
+  grad.addColorStop(1, 'rgba(74,222,128,0)');
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: song.dates.map((_, i) => i),
+      datasets: [{
+        data: values,
+        borderColor: '#4ade80',
+        backgroundColor: grad,
+        borderWidth: 1.5,
+        fill: true,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: '#4ade80',
+        tension: 0.3,
+        spanGaps: false
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: false,
+          external: (context) => {
+            const tt = document.getElementById('tooltip');
+            if (context.tooltip.opacity === 0) { tt.style.display = 'none'; return; }
+
+            const idx = context.tooltip.dataPoints[0].dataIndex;
+            const date = song.dates[idx];
+            const rev = song.revenues[idx];
+            const str = song.streams[idx];
+            const ev = eventMap[date];
+
+            let html = `<div class="tt-date">${date}</div>`;
+
+            if (isRevenue) {
+              html += `<div class="tt-value">${rev !== null && rev !== undefined ? rev.toFixed(3) : '—'}</div>`;
+              html += `<div class="tt-label">매출</div>`;
+            } else {
+              html += `<div class="tt-value">${str !== null && str !== undefined ? str.toLocaleString() : '—'}</div>`;
+              html += `<div class="tt-label">스트리밍</div>`;
+            }
+
+            if (ev) {
+              const isSug = ev.type === '수급';
+              html += `<div class="tt-event ${isSug ? 'sug' : 'ori'}">
+                <span class="tt-badge ${isSug ? 'sug' : 'ori'}">${ev.type}</span>
+                <div class="tt-cname">${ev.content_name}</div>
+                <div class="tt-stats">
+                  <div class="tt-stat"><div class="tt-stat-val">${ev.view.toLocaleString()}</div><div class="tt-stat-lbl">조회</div></div>
+                  <div class="tt-stat"><div class="tt-stat-val">${ev.like.toLocaleString()}</div><div class="tt-stat-lbl">좋아요</div></div>
+                  <div class="tt-stat"><div class="tt-stat-val">${ev.comment.toLocaleString()}</div><div class="tt-stat-lbl">댓글</div></div>
+                </div>
+              </div>`;
+            }
+
+            tt.innerHTML = html;
+            const pos = context.chart.canvas.getBoundingClientRect();
+            let left = pos.left + context.tooltip.caretX + 16;
+            let top2 = pos.top + context.tooltip.caretY - 20 + window.scrollY;
+            if (left + 320 > window.innerWidth) left = pos.left + context.tooltip.caretX - 260;
+            tt.style.left = left + 'px';
+            tt.style.top = top2 + 'px';
+            tt.style.display = 'block';
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#4a4e62',
+            font: { size: 10, family: 'DM Mono, monospace' },
+            callback: (val, i) => tickLabels[i] || null,
+            maxRotation: 0,
+            autoSkip: false
+          },
+          grid: { color: '#1a1d28' }
+        },
+        y: {
+          ticks: {
+            color: '#4a4e62',
+            font: { size: 10, family: 'DM Mono, monospace' },
+            callback: v => {
+              if (isRevenue) return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0);
+              return v >= 1000 ? Math.round(v / 1000) + 'k' : v;
+            }
+          },
+          grid: { color: '#1a1d28' }
+        }
+      }
+    }
+  });
+
+  document.getElementById('legend').innerHTML = `
+    <div class="legend-item"><div class="legend-line" style="background:#4ade80"></div>${isRevenue ? '일별 매출' : '일별 스트리밍'}</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>수급 콘텐츠 발행</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>오리지널 콘텐츠 발행</div>
+  `;
+}
+
+// 7. 에러 표시
+function showError(msg) {
+  document.getElementById('loading').style.display = 'none';
+  const el = document.getElementById('error-msg');
+  el.style.display = 'block';
+  el.innerHTML = `
+    <strong>CSV 파일을 불러올 수 없습니다.</strong><br><br>
+    <code>music_data.csv</code> 파일이 <code>음원_시계열_차트.html</code>과 <strong>같은 폴더</strong>에 있는지 확인해 주세요.<br><br>
+    ⚠️ 브라우저에서 로컬 파일(<code>file://</code>)을 직접 열면 보안 정책으로 CSV 로드가 차단됩니다.<br>
+    아래 방법 중 하나를 사용하세요:<br>
+    &nbsp;&nbsp;• VS Code → <strong>Live Server</strong> 확장 설치 후 HTML 우클릭 → Open with Live Server<br>
+    &nbsp;&nbsp;• 터미널에서 해당 폴더로 이동 후: <code>python -m http.server 8080</code> → 브라우저에서 <code>localhost:8080</code><br>
+    &nbsp;&nbsp;• 두 파일을 웹 서버(Google Drive, Netlify 등)에 함께 업로드<br><br>
+    <em style="color:#9ca3af">오류: ${msg}</em>
+  `;
+}
+
+document.addEventListener('scroll', () => { document.getElementById('tooltip').style.display = 'none'; });
+
+loadCSV();
+</script>
+</body>
+</html>
