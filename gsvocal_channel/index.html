@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>채널 성장 분석 2025</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 40px 24px 60px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 40px; }
+  .card { background: #1a1d27; border-radius: 12px; padding: 24px; border: 1px solid #2a2d3a; }
+  .card .label { font-size: 0.85rem; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .card .value { font-size: 2rem; font-weight: 700; color: #fff; }
+  .card .sub { font-size: 0.85rem; color: #64b5f6; margin-top: 8px; }
+
+  .section { margin-bottom: 40px; }
+  .section-title { font-size: 1.2rem; font-weight: 600; color: #e0e0e0; margin-bottom: 20px; padding-left: 12px; border-left: 4px solid #5c6bc0; }
+
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .chart-box { background: #1a1d27; border-radius: 12px; border: 1px solid #2a2d3a; padding: 12px; }
+  .chart-full { background: #1a1d27; border-radius: 12px; border: 1px solid #2a2d3a; padding: 12px; position: relative; }
+
+  .quarter-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .quarter-card { background: #1a1d27; border-radius: 12px; border: 1px solid #2a2d3a; padding: 24px; }
+  .quarter-card h3 { font-size: 1rem; color: #e0e0e0; margin-bottom: 24px; font-weight: 500; }
+  .q-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .q-label { font-size: 0.9rem; color: #bbb; width: 85px; }
+  .q-bar-wrap { flex: 1; margin: 0 12px; height: 10px; background: #2a2d3a; border-radius: 5px; overflow: hidden; }
+  .q-bar { height: 100%; border-radius: 5px; transition: width 0.8s ease; }
+  .bar-q2 { background: #5c6bc0; }
+  .bar-q3 { background: #ab47bc; }
+  .bar-q4 { background: #f06292; }
+  .q-val { font-size: 0.95rem; color: #fff; font-weight: 600; white-space: nowrap; width: 70px; text-align: right; }
+
+  @media (max-width: 900px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .quarter-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- 연간 요약 -->
+  <div class="section">
+    <div class="section-title">연간 요약 (2025.03.24 ~ 2025.12.31)</div>
+    <div class="cards">
+      <div class="card">
+        <div class="label">팔로워 순증가</div>
+        <div class="value">+8,996</div>
+        <div class="sub">11,568명 → 20,572명</div>
+      </div>
+      <div class="card">
+        <div class="label">총 조회수</div>
+        <div class="value">22.3M</div>
+        <div class="sub">22,340,063 views</div>
+      </div>
+      <div class="card">
+        <div class="label">총 업로드</div>
+        <div class="value">85</div>
+        <div class="sub">수급 66건 / 오리지널 19건</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 분기별 성장 비교 -->
+  <div class="section">
+    <div class="section-title">분기별 성장 비교 (2Q ~ 4Q)</div>
+    <div class="quarter-grid">
+      <div class="quarter-card">
+        <h3>팔로워 순증가</h3>
+        <div class="q-row"><span class="q-label">2Q (4~6월)</span><div class="q-bar-wrap"><div class="q-bar bar-q2" style="width:100.0%"></div></div><span class="q-val">+4,014</span></div>
+        <div class="q-row"><span class="q-label">3Q (7~9월)</span><div class="q-bar-wrap"><div class="q-bar bar-q3" style="width:84.28001993024414%"></div></div><span class="q-val">+3,383</span></div>
+        <div class="q-row"><span class="q-label">4Q (10~12월)</span><div class="q-bar-wrap"><div class="q-bar bar-q4" style="width:28.226208271051323%"></div></div><span class="q-val">+1,133</span></div>
+      </div>
+      <div class="quarter-card">
+        <h3>총 조회수</h3>
+        <div class="q-row"><span class="q-label">2Q</span><div class="q-bar-wrap"><div class="q-bar bar-q2" style="width:100.0%"></div></div><span class="q-val">10.1M</span></div>
+        <div class="q-row"><span class="q-label">3Q</span><div class="q-bar-wrap"><div class="q-bar bar-q3" style="width:72.26927316572133%"></div></div><span class="q-val">7.3M</span></div>
+        <div class="q-row"><span class="q-label">4Q</span><div class="q-bar-wrap"><div class="q-bar bar-q4" style="width:39.66446801756453%"></div></div><span class="q-val">4.0M</span></div>
+      </div>
+      <div class="quarter-card">
+        <h3>콘텐츠 업로드 수</h3>
+        <div class="q-row"><span class="q-label">2Q</span><div class="q-bar-wrap"><div class="q-bar bar-q2" style="width:83.87096774193549%"></div></div><span class="q-val">26건</span></div>
+        <div class="q-row"><span class="q-label">3Q</span><div class="q-bar-wrap"><div class="q-bar bar-q3" style="width:83.87096774193549%"></div></div><span class="q-val">26건</span></div>
+        <div class="q-row"><span class="q-label">4Q</span><div class="q-bar-wrap"><div class="q-bar bar-q4" style="width:100.0%"></div></div><span class="q-val">31건</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Charts -->
+  <div class="section">
+    <div class="section-title">월별 팔로워 & 조회수 추이</div>
+    <div class="chart-grid">
+      <div class="chart-box"><div id="chart-monthly-follower" style="height:320px;"></div></div>
+      <div class="chart-box"><div id="chart-monthly-views" style="height:320px;"></div></div>
+    </div>
+  </div>
+
+  <!-- Monthly Upload -->
+  <div class="section">
+    <div class="section-title">월별 콘텐츠 업로드 수</div>
+    <div class="chart-full"><div id="chart-monthly-uploads" style="height:300px;"></div></div>
+  </div>
+
+  <!-- Time Series Chart -->
+  <div class="section">
+    <div class="section-title">시계열 분석 — Daily 팔로워 & 조회수</div>
+    <div class="chart-full">
+      <div id="chart-timeseries" style="height:600px;"></div>
+      <div style="position: absolute; top: 12px; right: 20px; font-size: 0.85rem; color: #fff; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; pointer-events: none;">
+        💡 아래 트랙의 마커를 클릭하면 해당 콘텐츠(URL)로 이동합니다.
+      </div>
+    </div>
+    <div style="margin-top:16px; display:flex; gap:24px; flex-wrap:wrap; padding-left:12px;">
+      <div style="display:flex;align-items:center;gap:8px;"><div style="width:16px;height:16px;background:rgba(255,165,0,0.25);border:1px solid rgba(255,165,0,0.5);border-radius:4px;"></div><span style="font-size:0.9rem;color:#aaa;">오리지널 캠페인 기간</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;background:#64b5f6;border-radius:50%;"></div><span style="font-size:0.9rem;color:#aaa;">수급 콘텐츠 업로드</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;background:#ffb74d;border-radius:50%;"></div><span style="font-size:0.9rem;color:#aaa;">오리지널 콘텐츠 업로드</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {"dates": ["2025-03-24", "2025-03-25", "2025-03-26", "2025-03-27", "2025-03-28", "2025-03-29", "2025-03-30", "2025-03-31", "2025-04-01", "2025-04-02", "2025-04-03", "2025-04-04", "2025-04-05", "2025-04-06", "2025-04-07", "2025-04-08", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-15", "2025-04-16", "2025-04-17", "2025-04-18", "2025-04-19", "2025-04-20", "2025-04-21", "2025-04-22", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-04-28", "2025-04-29", "2025-04-30", "2025-05-01", "2025-05-02", "2025-05-03", "2025-05-04", "2025-05-05", "2025-05-06", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-10", "2025-05-11", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-17", "2025-05-18", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-24", "2025-05-25", "2025-05-26", "2025-05-27", "2025-05-28", "2025-05-29", "2025-05-30", "2025-05-31", "2025-06-01", "2025-06-02", "2025-06-03", "2025-06-04", "2025-06-05", "2025-06-06", "2025-06-07", "2025-06-08", "2025-06-09", "2025-06-10", "2025-06-11", "2025-06-12", "2025-06-13", "2025-06-14", "2025-06-15", "2025-06-16", "2025-06-17", "2025-06-18", "2025-06-19", "2025-06-20", "2025-06-21", "2025-06-22", "2025-06-23", "2025-06-24", "2025-06-25", "2025-06-26", "2025-06-27", "2025-06-28", "2025-06-29", "2025-06-30", "2025-07-01", "2025-07-02", "2025-07-03", "2025-07-04", "2025-07-05", "2025-07-06", "2025-07-07", "2025-07-08", "2025-07-09", "2025-07-10", "2025-07-11", "2025-07-12", "2025-07-13", "2025-07-14", "2025-07-15", "2025-07-16", "2025-07-17", "2025-07-18", "2025-07-19", "2025-07-20", "2025-07-21", "2025-07-22", "2025-07-23", "2025-07-24", "2025-07-25", "2025-07-26", "2025-07-27", "2025-07-28", "2025-07-29", "2025-07-30", "2025-07-31", "2025-08-01", "2025-08-02", "2025-08-03", "2025-08-04", "2025-08-05", "2025-08-06", "2025-08-07", "2025-08-08", "2025-08-09", "2025-08-10", "2025-08-11", "2025-08-12", "2025-08-13", "2025-08-14", "2025-08-15", "2025-08-16", "2025-08-17", "2025-08-18", "2025-08-19", "2025-08-20", "2025-08-21", "2025-08-22", "2025-08-23", "2025-08-24", "2025-08-25", "2025-08-26", "2025-08-27", "2025-08-28", "2025-08-29", "2025-08-30", "2025-08-31", "2025-09-01", "2025-09-02", "2025-09-03", "2025-09-04", "2025-09-05", "2025-09-06", "2025-09-07", "2025-09-08", "2025-09-09", "2025-09-10", "2025-09-11", "2025-09-12", "2025-09-13", "2025-09-14", "2025-09-15", "2025-09-16", "2025-09-17", "2025-09-18", "2025-09-19", "2025-09-20", "2025-09-21", "2025-09-22", "2025-09-23", "2025-09-24", "2025-09-25", "2025-09-26", "2025-09-27", "2025-09-28", "2025-09-29", "2025-09-30", "2025-10-01", "2025-10-02", "2025-10-03", "2025-10-04", "2025-10-05", "2025-10-06", "2025-10-07", "2025-10-08", "2025-10-09", "2025-10-10", "2025-10-11", "2025-10-12", "2025-10-13", "2025-10-14", "2025-10-15", "2025-10-16", "2025-10-17", "2025-10-18", "2025-10-19", "2025-10-20", "2025-10-21", "2025-10-22", "2025-10-23", "2025-10-24", "2025-10-25", "2025-10-26", "2025-10-27", "2025-10-28", "2025-10-29", "2025-10-30", "2025-10-31", "2025-11-01", "2025-11-02", "2025-11-03", "2025-11-04", "2025-11-05", "2025-11-06", "2025-11-07", "2025-11-08", "2025-11-09", "2025-11-10", "2025-11-11", "2025-11-12", "2025-11-13", "2025-11-14", "2025-11-15", "2025-11-16", "2025-11-17", "2025-11-18", "2025-11-19", "2025-11-20", "2025-11-21", "2025-11-22", "2025-11-23", "2025-11-24", "2025-11-25", "2025-11-26", "2025-11-27", "2025-11-28", "2025-11-29", "2025-11-30", "2025-12-01", "2025-12-02", "2025-12-03", "2025-12-04", "2025-12-05", "2025-12-06", "2025-12-07", "2025-12-08", "2025-12-09", "2025-12-10", "2025-12-11", "2025-12-12", "2025-12-13", "2025-12-14", "2025-12-15", "2025-12-16", "2025-12-17", "2025-12-18", "2025-12-19", "2025-12-20", "2025-12-21", "2025-12-22", "2025-12-23", "2025-12-24", "2025-12-25", "2025-12-26", "2025-12-27", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31"], "daily_follower": [48, 42, 52, 34, 86, 88, 50, 66, 76, 66, 42, 35, 25, 25, 19, 49, 31, 20, 38, 39, 27, 26, 28, 15, 24, 16, 30, 5, 175, 151, 93, 66, 103, 103, 70, 41, 37, 26, 29, 42, 18, 14, 16, 59, 36, 32, 42, 32, 67, 47, 40, 24, 43, 17, 39, 32, 41, 17, 28, 7, 48, 37, 36, 25, 38, 39, 64, 55, 27, 34, 44, 45, 38, 31, 3, 14, 5, 13, 17, 21, 14, 24, 28, 20, 13, 26, 14, 20, 68, 89, 89, 152, 138, 95, 104, 87, 46, 48, 82, 63, 56, 23, 31, 27, 15, 43, 24, 22, 22, 27, 23, 31, 62, 65, 53, 37, 29, 12, 14, 61, 68, 120, 51, 37, 34, 48, 38, 37, 39, 32, 22, 9, 17, 15, 31, 76, 52, 25, 4, 3, 27, 16, 0, 12, 27, 23, 121, 152, 162, 122, 85, 69, 29, 79, 29, 36, 32, 20, 17, 10, 25, 11, 19, 10, 8, 20, 13, 13, 13, 11, 21, -1, 13, 15, 15, 20, 28, 32, 30, 47, 39, 34, 25, 41, 74, 61, 38, 25, 32, 14, 71, 79, 121, 163, 75, 25, 24, 16, 4, 20, 8, 20, 10, 16, 22, 2, 33, 9, 19, 4, 12, 5, 26, 22, 34, 7, 23, 22, 26, 29, 26, 37, 14, 18, 24, 28, 14, 7, 13, 0, 16, 19, 15, 5, 17, 9, 3, 3, 7, 5, -1, 8, -1, -2, 6, -6, 1, 3, -5, -6, -11, -2, -2, -2, -4, -5, -7, -14, 0, 7, 11, 0, -1, 6, -1, 8, -1, -3, 9, 1, 17, -1, 1, 6, 2, 5, -13, 0, -11, -7, -2, 2, -8], "daily_views": [44916, 75242, 80763, 77632, 65400, 234803, 210826, 126559, 168808, 122835, 116311, 82255, 74546, 65123, 33984, 66092, 119405, 60905, 61137, 126805, 96358, 64870, 79106, 87650, 57420, 45774, 63141, 49792, 30390, 486967, 392570, 207062, 116343, 305702, 259884, 179367, 111881, 110102, 96005, 86039, 94872, 69866, 69702, 63108, 167969, 93543, 100443, 146869, 133287, 184594, 114195, 130526, 78981, 104275, 75672, 80888, 63370, 68804, 57646, 57140, 49356, 121719, 94427, 83042, 66301, 82443, 77476, 187970, 210348, 117141, 89737, 141702, 144646, 153087, 109359, 83577, 68844, 51438, 50782, 53617, 53055, 49526, 98280, 86359, 68251, 53534, 52376, 52361, 53770, 129440, 145319, 121172, 258675, 210703, 181206, 145535, 138633, 104196, 89001, 131362, 84657, 88521, 66896, 92754, 70805, 64777, 104251, 55647, 58266, 52344, 59256, 49706, 37326, 136210, 117440, 114467, 80358, 70988, 50398, 49365, 144724, 151870, 223798, 141546, 112294, 72596, 77561, 88040, 113672, 99426, 89900, 66941, 60392, 53500, 51655, 81601, 98659, 83205, 60458, 46137, 50741, 48000, 42594, 44007, 59116, 66816, 61184, 282145, 245587, 260424, 158752, 143520, 126516, 82142, 103177, 76883, 71668, 51344, 51112, 51197, 49643, 37548, 38950, 34725, 35990, 40367, 46653, 35120, 34363, 34701, 34841, 37759, 40785, 43259, 39186, 35214, 40263, 41958, 39463, 40822, 82814, 66255, 54520, 50733, 45487, 122205, 154020, 126411, 82296, 55637, 52862, 59116, 84372, 106460, 93102, 62453, 48546, 44991, 42331, 45207, 44835, 51768, 50456, 33464, 37153, 32400, 41865, 47164, 67995, 54948, 31982, 38484, 39012, 56134, 59353, 83784, 53761, 58584, 48807, 90371, 70002, 102238, 101849, 71365, 66180, 66565, 84585, 57245, 56878, 59708, 49931, 53319, 47139, 70745, 48410, 44163, 44545, 40085, 33186, 32135, 31385, 30866, 31203, 32107, 26735, 21744, 19698, 32135, 38101, 29571, 31542, 26099, 21460, 22099, 20529, 25950, 23974, 36706, 26812, 24395, 33143, 28780, 32115, 25863, 62878, 27195, 32304, 28529, 27278, 28638, 23808, 34211, 20995, 19459, 33214, 30953, 24894, 20367, 33182, 21210, 18576, 16259, 23462], "campaign_ranges": [{"x0": "2025-08-04", "x1": "2025-08-22"}, {"x0": "2025-10-28", "x1": "2025-11-26"}, {"x0": "2025-12-24", "x1": "2025-12-31"}], "supply": [{"date_str": "2025-03-25", "content_name": "무대가 체질인 듀엣 케미", "url": "https://www.tiktok.com/@gs_vocalclub/video/7484214971652640001", "view_cnt": 144000, "like_cnt": 5996, "comment_cnt": 23}, {"date_str": "2025-03-29", "content_name": "독감 걸렸지만 고음은 포기 못함", "url": "https://www.tiktok.com/@gs_vocalclub/video/7486672509580987665", "view_cnt": 523500, "like_cnt": 24700, "comment_cnt": 267}, {"date_str": "2025-04-01", "content_name": "담백한 음색이 주는 설렘", "url": "https://www.tiktok.com/@gs_vocalclub/video/7486673170959715601", "view_cnt": 54300, "like_cnt": 3470, "comment_cnt": 20}, {"date_str": "2025-04-05", "content_name": "마지막 중학교 축제에서 이별 노래", "url": "https://www.tiktok.com/@gs_vocalclub/video/7489013006001589505", "view_cnt": 65500, "like_cnt": 2676, "comment_cnt": 12}, {"date_str": "2025-04-08", "content_name": "어떻게 고2에게 이런 음색이", "url": "https://www.tiktok.com/@gs_vocalclub/video/7489013212147420433", "view_cnt": 23700, "like_cnt": 710, "comment_cnt": 4}, {"date_str": "2025-04-12", "content_name": "복면가왕 예선전에서 살아남는 법", "url": "https://www.tiktok.com/@gs_vocalclub/video/7491478615704554769", "view_cnt": 247000, "like_cnt": 12300, "comment_cnt": 18}, {"date_str": "2025-04-15", "content_name": "학교 축제 섭렵한 고음 여신", "url": "https://www.tiktok.com/@gs_vocalclub/video/7491479024146074881", "view_cnt": 206400, "like_cnt": 7966, "comment_cnt": 34}, {"date_str": "2025-04-19", "content_name": "음색 깡패 고등학생의 축가", "url": "https://www.tiktok.com/@gs_vocalclub/video/7494677573796941073", "view_cnt": 80800, "like_cnt": 3884, "comment_cnt": 8}, {"date_str": "2025-04-22", "content_name": "성량으로 무대 뿌시는 중3", "url": "https://www.tiktok.com/@gs_vocalclub/video/7494677894501764368", "view_cnt": 1500000, "like_cnt": 61400, "comment_cnt": 428}, {"date_str": "2025-04-26", "content_name": "음색이 학교 마이크 집어삼킴", "url": "https://www.tiktok.com/@gs_vocalclub/video/7497238372012805377", "view_cnt": 767400, "like_cnt": 33900, "comment_cnt": 77}, {"date_str": "2025-04-29", "content_name": "하교 후 낭만으로 물든 놀이터", "url": "https://www.tiktok.com/@gs_vocalclub/video/7497238614552628497", "view_cnt": 170000, "like_cnt": 640, "comment_cnt": 3}, {"date_str": "2025-05-03", "content_name": "축제 장악해버리는 허스키 보이스", "url": "https://www.tiktok.com/@gs_vocalclub/video/7499135745660095761", "view_cnt": 57600, "like_cnt": 1790, "comment_cnt": 5}, {"date_str": "2025-05-06", "content_name": "학교 화장실을 무대로 만드는 음색", "url": "https://www.tiktok.com/@gs_vocalclub", "view_cnt": 15900, "like_cnt": 583, "comment_cnt": 9}, {"date_str": "2025-05-10", "content_name": "음색으로 컴퓨터실 점령함", "url": "https://www.tiktok.com/@gs_vocalclub/video/7499136445152496897", "view_cnt": 410900, "like_cnt": 15800, "comment_cnt": 47}, {"date_str": "2025-05-13", "content_name": "케이팝계가 탐낼 고등학생", "url": "https://www.tiktok.com/@gs_vocalclub/video/7499136637234990352", "view_cnt": 59500, "like_cnt": 2062, "comment_cnt": 9}, {"date_str": "2025-05-17", "content_name": "고등학생 음색이 이리 좋아도 됨?", "url": "https://www.tiktok.com/@gs_vocalclub/video/7504240806463589633", "view_cnt": 71600, "like_cnt": 3924, "comment_cnt": 18}, {"date_str": "2025-05-20", "content_name": "감성 미친 고3의 힐링 버스킹", "url": "https://www.tiktok.com/@gs_vocalclub/video/7504240947400658193", "view_cnt": 24900, "like_cnt": 744, "comment_cnt": 6}, {"date_str": "2025-05-24", "content_name": "감성 라이브 킬포 모음", "url": "https://www.tiktok.com/@gs_vocalclub/video/7506730473712782609", "view_cnt": 241400, "like_cnt": 8053, "comment_cnt": 8}, {"date_str": "2025-05-27", "content_name": "08년생이 전하는 위로의 노래", "url": "https://www.tiktok.com/@gs_vocalclub/video/7506730635332029697", "view_cnt": 22400, "like_cnt": 819, "comment_cnt": 4}, {"date_str": "2025-05-31", "content_name": "교복 입고 부르는 달달 고백송", "url": "https://www.tiktok.com/@gs_vocalclub/video/7509443180836834561", "view_cnt": 13500, "like_cnt": 485, "comment_cnt": 3}, {"date_str": "2025-06-03", "content_name": "고1의 기개 넘치는 축제 무대", "url": "https://www.tiktok.com/@gs_vocalclub/video/7509443519828790529", "view_cnt": 327900, "like_cnt": 13600, "comment_cnt": 50}, {"date_str": "2025-06-07", "content_name": "설렘 그 자체인 고딩 음색", "url": "https://www.tiktok.com/@gs_vocalclub/video/7512314880993561857", "view_cnt": 17600, "like_cnt": 516, "comment_cnt": 2}, {"date_str": "2025-06-10", "content_name": "믿기 힘든 중3 감성 보이스", "url": "https://www.tiktok.com/@gs_vocalclub/video/7512315201954385169", "view_cnt": 21800, "like_cnt": 647, "comment_cnt": 6}, {"date_str": "2025-06-14", "content_name": "축제에 나타난 음색 여신", "url": "https://www.tiktok.com/@gs_vocalclub/video/7515020686901955856", "view_cnt": 140400, "like_cnt": 8572, "comment_cnt": 9}, {"date_str": "2025-06-17", "content_name": "정시로 전향한 고3의 아련한 감성", "url": "https://www.tiktok.com/@gs_vocalclub/video/7515021026124762369", "view_cnt": 17900, "like_cnt": 669, "comment_cnt": 6}, {"date_str": "2025-06-21", "content_name": "아련한 음색 1티어 고등학생", "url": "https://www.tiktok.com/@gs_vocalclub/video/7515021405566618881", "view_cnt": 431100, "like_cnt": 28100, "comment_cnt": 82}, {"date_str": "2025-06-24", "content_name": "중3의 마지막 체육대회 공연", "url": "https://www.tiktok.com/@gs_vocalclub/video/7515021580259446033", "view_cnt": 659700, "like_cnt": 17400, "comment_cnt": 134}, {"date_str": "2025-06-28", "content_name": "성량으로 천장 뿌시는 외고생", "url": "https://www.tiktok.com/@gs_vocalclub/video/7520408065808567569", "view_cnt": 13400, "like_cnt": 349, "comment_cnt": 3}, {"date_str": "2025-07-05", "content_name": "방과후 밴드부 오디션 감성", "url": "https://www.tiktok.com/@gs_vocalclub/video/7523136752664448257", "view_cnt": 90200, "like_cnt": 2420, "comment_cnt": 3}, {"date_str": "2025-07-08", "content_name": "마 이게 K-고딩 소울이다", "url": "https://www.tiktok.com/@gs_vocalclub/video/7523137077924351233", "view_cnt": 30200, "like_cnt": 816, "comment_cnt": 3}, {"date_str": "2025-07-12", "content_name": "하룰나라 급행 가는 고딩 음색", "url": "https://www.tiktok.com/@gs_vocalclub/video/7525398147766439184", "view_cnt": 25200, "like_cnt": 1102, "comment_cnt": 5}, {"date_str": "2025-07-15", "content_name": "깁스해도 무대는 포기 못함", "url": "https://www.tiktok.com/@gs_vocalclub/video/7525398413949537553", "view_cnt": 332700, "like_cnt": 12000, "comment_cnt": 42}, {"date_str": "2025-07-19", "content_name": "축제 무대에 다듀는 국룰이지", "url": "https://www.tiktok.com/@gs_vocalclub/video/7528328269993708817", "view_cnt": 35500, "like_cnt": 977, "comment_cnt": 3}, {"date_str": "2025-07-22", "content_name": "떨려도 일단 지르는 고3 기개", "url": "https://www.tiktok.com/@gs_vocalclub/video/7528328604569079056", "view_cnt": 495600, "like_cnt": 25300, "comment_cnt": 66}, {"date_str": "2025-07-26", "content_name": "여름이었다 그 잡채인 밴드부", "url": "https://www.tiktok.com/@gs_vocalclub/video/7530558084117236993", "view_cnt": 26300, "like_cnt": 651, "comment_cnt": 4}, {"date_str": "2025-07-29", "content_name": "남사친 삼고 싶은 고3 보컬", "url": "https://www.tiktok.com/@gs_vocalclub/video/7530558396580285697", "view_cnt": 92500, "like_cnt": 4755, "comment_cnt": 15}, {"date_str": "2025-09-06", "content_name": "18살의 고백 같은 노래", "url": "https://www.tiktok.com/@gs_vocalclub/video/7546151030787018004", "view_cnt": 9679, "like_cnt": 169, "comment_cnt": 4}, {"date_str": "2025-09-09", "content_name": "예고생 감성 가득한 라이브", "url": "https://www.tiktok.com/@gs_vocalclub/video/7546152340156435720", "view_cnt": 19900, "like_cnt": 706, "comment_cnt": 7}, {"date_str": "2025-09-13", "content_name": "데뷔가 시급한 남고생 음색", "url": "https://www.tiktok.com/@gs_vocalclub/video/7546152971474668817", "view_cnt": 8750, "like_cnt": 166, "comment_cnt": 3}, {"date_str": "2025-09-16", "content_name": "무반주로 뿌시는 중학생", "url": "https://www.tiktok.com/@gs_vocalclub/video/7550671209625701639", "view_cnt": 11200, "like_cnt": 433, "comment_cnt": 5}, {"date_str": "2025-09-18", "content_name": "인디계가 탐낼 17살 음색", "url": "https://www.tiktok.com/@gs_vocalclub/video/7551392291210972417", "view_cnt": 10500, "like_cnt": 207, "comment_cnt": 6}, {"date_str": "2025-09-20", "content_name": "기세로 라이브하는 고2", "url": "https://www.tiktok.com/@gs_vocalclub/video/7552092300684348690", "view_cnt": 132300, "like_cnt": 7087, "comment_cnt": 23}, {"date_str": "2025-09-23", "content_name": "가을 낭만 담긴 고딩 음색", "url": "https://www.tiktok.com/@gs_vocalclub/video/7553189260375985426", "view_cnt": 15800, "like_cnt": 504, "comment_cnt": 8}, {"date_str": "2025-09-25", "content_name": "로꼬 파트 소화하는 여고생", "url": "https://www.tiktok.com/@gs_vocalclub/video/7553956492857068808", "view_cnt": 413100, "like_cnt": 19300, "comment_cnt": 196}, {"date_str": "2025-09-27", "content_name": "어떻게 중2 음색이 제주 삼다수", "url": "https://www.tiktok.com/@gs_vocalclub/video/7554401100011490568", "view_cnt": 32400, "like_cnt": 1084, "comment_cnt": 11}, {"date_str": "2025-09-30", "content_name": "가수가 꿈인 고2 라이브", "url": "https://www.tiktok.com/@gs_vocalclub/video/7554401829296065799", "view_cnt": 19600, "like_cnt": 947, "comment_cnt": 6}, {"date_str": "2025-10-02", "content_name": "축제에서 '예뻤어'는 반칙이지", "url": "https://www.tiktok.com/@gs_vocalclub/video/7556936390215208199", "view_cnt": 151800, "like_cnt": 1779, "comment_cnt": 14}, {"date_str": "2025-10-04", "content_name": "15살이 부르는 감성 발라드", "url": "https://www.tiktok.com/@gs_vocalclub/video/7556935461822860562", "view_cnt": 33700, "like_cnt": 1312, "comment_cnt": 5}, {"date_str": "2025-10-07", "content_name": "이별 노래 호소력 미친 고3", "url": "https://www.tiktok.com/@gs_vocalclub/video/7556935794179575048", "view_cnt": 8402, "like_cnt": 107, "comment_cnt": 2}, {"date_str": "2025-10-09", "content_name": "기타 치며 노래하는 여고생", "url": "https://www.tiktok.com/@gs_vocalclub/video/7556936068847783186", "view_cnt": 15400, "like_cnt": 438, "comment_cnt": 7}, {"date_str": "2025-10-11", "content_name": "고1의 낭만적인 축제 무대", "url": "https://www.tiktok.com/@gs_vocalclub/video/7556936390215208199", "view_cnt": 39700, "like_cnt": 1501, "comment_cnt": 4}, {"date_str": "2025-10-14", "content_name": "화음 미친 한림예고 듀엣", "url": "https://www.tiktok.com/@gs_vocalclub/video/7560970952087997714", "view_cnt": 10300, "like_cnt": 303, "comment_cnt": 3}, {"date_str": "2025-10-16", "content_name": "귀요미 중딩 밴드의 가을 송", "url": "https://www.tiktok.com/@gs_vocalclub/video/7560971217730145544", "view_cnt": 82100, "like_cnt": 3180, "comment_cnt": 14}, {"date_str": "2025-10-18", "content_name": "이게 바로 k-고딩 때창의 맛", "url": "https://www.tiktok.com/@gs_vocalclub/video/7560911606138359058", "view_cnt": 18400, "like_cnt": 379, "comment_cnt": 15}, {"date_str": "2025-10-21", "content_name": "발성 미쳐버린 존잘 남고딩", "url": "https://www.tiktok.com/@gs_vocalclub/video/7563576878729039124", "view_cnt": 78300, "like_cnt": 5253, "comment_cnt": 7}, {"date_str": "2025-10-25", "content_name": "음색으로 무대 뿌시는 중딩", "url": "https://www.tiktok.com/@gs_vocalclub/video/7563583947418979604", "view_cnt": 88100, "like_cnt": 2929, "comment_cnt": 2}, {"date_str": "2025-12-02", "content_name": "흔한 고1 여고생 라이브", "url": "https://www.tiktok.com/@gs_vocalclub/video/7579135064877976833", "view_cnt": 14600, "like_cnt": 578, "comment_cnt": 5}, {"date_str": "2025-12-04", "content_name": "09가 말아주는 찰진 싱잉랩", "url": "https://www.tiktok.com/@gs_vocalclub/video/7579924985129553160", "view_cnt": 31400, "like_cnt": 732, "comment_cnt": 1}, {"date_str": "2025-12-06", "content_name": "아련함 끝판왕 19살 음색", "url": "https://www.tiktok.com/@gs_vocalclub/video/7580719625780890887", "view_cnt": 39500, "like_cnt": 1221, "comment_cnt": 2}, {"date_str": "2025-12-09", "content_name": "겨울 눈꽃을 닮은 고딩 음색", "url": "https://www.tiktok.com/@gs_vocalclub/video/7581827962400460039", "view_cnt": 13400, "like_cnt": 382, "comment_cnt": 0}, {"date_str": "2025-12-11", "content_name": "통기타 라이브 말아주는 고2", "url": "https://www.tiktok.com/@gs_vocalclub/video/7582535924848921876", "view_cnt": 13300, "like_cnt": 477, "comment_cnt": 1}, {"date_str": "2025-12-13", "content_name": "축제에 나타난 음색 요정", "url": "https://www.tiktok.com/@gs_vocalclub/video/7582929449587445013", "view_cnt": 83600, "like_cnt": 2943, "comment_cnt": 3}, {"date_str": "2025-12-16", "content_name": "폭닥 겨울 이불 같은 고1 보컬", "url": "https://www.tiktok.com/@gs_vocalclub/video/7584422942021307668", "view_cnt": 17600, "like_cnt": 515, "comment_cnt": 5}, {"date_str": "2025-12-18", "content_name": "청춘의 한 장면 같은 고딩 밴드", "url": "https://www.tiktok.com/@gs_vocalclub/video/7585147209058897160", "view_cnt": 7138, "like_cnt": 242, "comment_cnt": 2}, {"date_str": "2025-12-20", "content_name": "첫눈 낭만 가득한 중3 라이브", "url": "https://www.tiktok.com/@gs_vocalclub/video/7585504721830415623", "view_cnt": 27600, "like_cnt": 1078, "comment_cnt": 2}, {"date_str": "2025-12-23", "content_name": "중1이 부르는 겨울 아련송", "url": "https://www.tiktok.com/@gs_vocalclub/video/7585505088060361992", "view_cnt": 24200, "like_cnt": 578, "comment_cnt": 7}], "original": [{"date_str": "2025-08-04", "content_name": "이런게 여름이면 1년 내내도 하죠", "url": "https://www.tiktok.com/@gs_vocalclub/video/7534618595171503378", "view_cnt": 42000, "like_cnt": 3316, "comment_cnt": 9}, {"date_str": "2025-08-06", "content_name": "아 눈부셔....미래가 너무 밝아서", "url": "https://www.tiktok.com/@gs_vocalclub/video/7535008621013323028", "view_cnt": 273000, "like_cnt": 8428, "comment_cnt": 66}, {"date_str": "2025-08-08", "content_name": "리즈시절 민경훈이 살아돌아옴", "url": "https://www.tiktok.com/@gs_vocalclub/video/7535011060596690197", "view_cnt": 48000, "like_cnt": 880, "comment_cnt": 20}, {"date_str": "2025-08-11", "content_name": "순수100청량포카리음색 감동되..", "url": "https://www.tiktok.com/@gs_vocalclub/video/7536081235483954433", "view_cnt": 39000, "like_cnt": 861, "comment_cnt": 9}, {"date_str": "2025-08-13", "content_name": "고3 밴드 보컬이 주는 낭만이 있음", "url": "https://www.tiktok.com/@gs_vocalclub/video/7537232586691595536", "view_cnt": 27000, "like_cnt": 372, "comment_cnt": 4}, {"date_str": "2025-08-15", "content_name": "감성 풀충됐어...", "url": "https://www.tiktok.com/@gs_vocalclub/video/7537233011746540821", "view_cnt": 221000, "like_cnt": 6289, "comment_cnt": 43}, {"date_str": "2025-08-18", "content_name": "여름 방학 부장 선거 시작", "url": "https://www.tiktok.com/@gs_vocalclub/video/7539860000861080852", "view_cnt": 613000, "like_cnt": 26000, "comment_cnt": 480}, {"date_str": "2025-08-22", "content_name": "여름 방학 부장 발표", "url": "https://www.tiktok.com/@gs_vocalclub/video/7541277623062744341", "view_cnt": 71000, "like_cnt": 1986, "comment_cnt": 17}, {"date_str": "2025-10-28", "content_name": "한림예고 남자 발라드 보컬 당신의 취향은?", "url": "https://www.tiktok.com/@gs_vocalclub/video/7566241626989808917", "view_cnt": 267200, "like_cnt": 6074, "comment_cnt": 160}, {"date_str": "2025-10-31", "content_name": "한림예고 음색 스타일 당신의 취향은?", "url": "https://www.tiktok.com/@gs_vocalclub/video/7567296655280590100", "view_cnt": 140900, "like_cnt": 5755, "comment_cnt": 35}, {"date_str": "2025-11-03", "content_name": "한림예고 여자 발라드 내 취향 보컬은?", "url": "https://www.tiktok.com/@gs_vocalclub/video/7568421483584720148", "view_cnt": 134600, "like_cnt": 4215, "comment_cnt": 74}, {"date_str": "2025-11-05", "content_name": "한림예고 노래방 듀엣 나는 어떤 스타일?", "url": "https://www.tiktok.com/@gs_vocalclub/video/7568747869788802325", "view_cnt": 11300, "like_cnt": 217, "comment_cnt": 3}, {"date_str": "2025-11-07", "content_name": "한림예고 남녀 고음 당신의 취향은?", "url": "https://www.tiktok.com/@gs_vocalclub/video/7569131967040556309", "view_cnt": 28200, "like_cnt": 758, "comment_cnt": 3}, {"date_str": "2025-11-10", "content_name": "한림예고 반전 실력자는?", "url": "https://www.tiktok.com/@gs_vocalclub/video/7570934723749448980", "view_cnt": 21200, "like_cnt": 317, "comment_cnt": 9}, {"date_str": "2025-11-12", "content_name": "한림예고 듀엣곡 당신의 취향은?", "url": "https://www.tiktok.com/@gs_vocalclub/video/7571645781640285461", "view_cnt": 34200, "like_cnt": 403, "comment_cnt": 3}, {"date_str": "2025-11-26", "content_name": "한림예고 실음과 나의 최애 보컬은?", "url": "https://www.tiktok.com/@gs_vocalclub/video/7576970134758247697", "view_cnt": 59200, "like_cnt": 2012, "comment_cnt": 15}, {"date_str": "2025-12-24", "content_name": "", "url": "", "view_cnt": 0, "like_cnt": 0, "comment_cnt": 0}, {"date_str": "2025-12-27", "content_name": "", "url": "", "view_cnt": 0, "like_cnt": 0, "comment_cnt": 0}, {"date_str": "2025-12-31", "content_name": "", "url": "", "view_cnt": 0, "like_cnt": 0, "comment_cnt": 0}], "monthly_labels": ["2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12"], "monthly_follower": [466, 1501, 1091, 1422, 1244, 1347, 792, 939, 201, -7], "monthly_views": [916141, 3842585, 3110876, 3155322, 2861321, 2819016, 1625207, 1781138, 1379219, 849238], "monthly_uploads": [2, 9, 9, 8, 8, 8, 10, 12, 6, 13], "monthly_supply": [2, 9, 9, 8, 8, 0, 10, 10, 0, 10], "monthly_original": [0, 0, 0, 0, 0, 8, 0, 2, 6, 3]};
+
+const plotlyLayout = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor: '#12151e',
+  font: { color: '#c0c0c0', size: 12 },
+  xaxis: { gridcolor: '#2a2d3a', tickfont: { size: 11 } },
+  yaxis: { gridcolor: '#2a2d3a', tickfont: { size: 11 } },
+  margin: { t: 30, r: 20, b: 40, l: 60 },
+  legend: { bgcolor: 'rgba(0,0,0,0)', font: { color: '#c0c0c0' } },
+  bargap: 0.3,
+};
+
+Plotly.newPlot('chart-monthly-follower', [{
+  x: DATA.monthly_labels, y: DATA.monthly_follower, type: 'bar', name: '팔로워 순증가',
+  marker: { color: DATA.monthly_follower.map(v => v >= 0 ? '#5c6bc0' : '#ef5350'), opacity: 0.85 },
+  text: DATA.monthly_follower.map(v => v >= 0 ? '+'+v.toLocaleString() : v.toLocaleString()),
+  textposition: 'outside', textfont: { size: 11, color: '#ccc' },
+  hovertemplate: '%{x}<br>팔로워: %{y:,}<extra></extra>',
+}], { ...plotlyLayout, title: { text: '월별 팔로워 순증가', font: { size: 14, color: '#fff' }, x: 0.5 }, yaxis: { ...plotlyLayout.yaxis, title: '팔로워 수' } }, { responsive: true, displayModeBar: false });
+
+Plotly.newPlot('chart-monthly-views', [{
+  x: DATA.monthly_labels, y: DATA.monthly_views, type: 'bar', name: '조회수',
+  marker: { color: '#26c6da', opacity: 0.85 },
+  text: DATA.monthly_views.map(v => (v/10000).toFixed(0)+'만'),
+  textposition: 'outside', textfont: { size: 11, color: '#ccc' },
+  hovertemplate: '%{x}<br>조회수: %{y:,}<extra></extra>',
+}], { ...plotlyLayout, title: { text: '월별 조회수', font: { size: 14, color: '#fff' }, x: 0.5 }, yaxis: { ...plotlyLayout.yaxis, title: '조회수' } }, { responsive: true, displayModeBar: false });
+
+Plotly.newPlot('chart-monthly-uploads', [
+  { x: DATA.monthly_labels, y: DATA.monthly_supply, type: 'bar', name: '수급', marker: { color: '#64b5f6', opacity: 0.9 }, hovertemplate: '%{x}<br>수급: %{y}건<extra></extra>' },
+  { x: DATA.monthly_labels, y: DATA.monthly_original, type: 'bar', name: '오리지널', marker: { color: '#ffb74d', opacity: 0.9 }, hovertemplate: '%{x}<br>오리지널: %{y}건<extra></extra>' }
+], { ...plotlyLayout, barmode: 'stack', title: { text: '월별 콘텐츠 업로드 (수급 + 오리지널)', font: { size: 14, color: '#fff' }, x: 0.5 }, yaxis: { ...plotlyLayout.yaxis, title: '업로드 건수', dtick: 2 }, legend: { ...plotlyLayout.legend, orientation: 'h', y: -0.2 } }, { responsive: true, displayModeBar: false });
+
+// --- Time Series Setup ---
+const supplyDates = DATA.supply.map(d => d.date_str);
+const supplyRailY = DATA.supply.map(() => 0.65); // Separate track line for supply
+const supplyText = DATA.supply.map(d => `<b>${d.content_name}</b><br>조회수: ${Number(d.view_cnt).toLocaleString()}<br>좋아요: ${Number(d.like_cnt).toLocaleString()}<br>댓글: ${Number(d.comment_cnt).toLocaleString()}<br><span style="color:#64b5f6;">🖱️ 클릭하여 영상 보기</span>`);
+const supplyCustomData = DATA.supply.map(d => ({ url: d.url }));
+
+const originalDates = DATA.original.map(d => d.date_str);
+const originalRailY = DATA.original.map(() => 0.35); // Separate track line for original
+const originalText = DATA.original.map(d => `<b>[오리지널] ${d.content_name}</b><br>조회수: ${Number(d.view_cnt).toLocaleString()}<br>좋아요: ${Number(d.like_cnt).toLocaleString()}<br>댓글: ${Number(d.comment_cnt).toLocaleString()}<br><span style="color:#ffb74d;">🖱️ 클릭하여 영상 보기</span>`);
+const originalCustomData = DATA.original.map(d => ({ url: d.url }));
+
+// Draw campaign backgrounds targeting y domain [0.25, 1] so it covers line charts but not the marker tracks
+const shapes = DATA.campaign_ranges.map(r => ({ type: 'rect', xref: 'x', yref: 'paper', x0: r.x0, x1: r.x1, y0: 0.20, y1: 1, fillcolor: 'rgba(255,165,0,0.12)', line: { width: 0 }, layer: 'below' }));
+const annotations = DATA.campaign_ranges.map(r => ({ x: r.x0, y: 1, xref: 'x', yref: 'paper', text: '🎯 오리지널<br>캠페인', showarrow: false, font: { size: 10, color: 'rgba(255,165,0,0.8)' }, xanchor: 'left', yanchor: 'top' }));
+
+const tsLayout = {
+  ...plotlyLayout, shapes: shapes, annotations: annotations,
+  title: { text: 'Daily 팔로워 & 조회수 시계열', font: { size: 14, color: '#fff' }, x: 0.5 },
+  xaxis: { ...plotlyLayout.xaxis, type: 'date', title: '' }, // Removed rangeslider completely
+  yaxis: { 
+    ...plotlyLayout.yaxis, 
+    domain: [0.20, 1], // Top 80% for lines
+    title: 'Daily 팔로워', 
+    titlefont: { color: '#5c6bc0' }, 
+    tickfont: { color: '#5c6bc0', size: 11 }, 
+    side: 'left' 
+  },
+  yaxis2: { 
+    domain: [0.20, 1],
+    title: 'Daily 조회수', 
+    titlefont: { color: '#26c6da' }, 
+    tickfont: { color: '#26c6da', size: 11 }, 
+    overlaying: 'y', 
+    side: 'right', 
+    gridcolor: 'rgba(38,198,218,0.1)', 
+    showgrid: false 
+  },
+  yaxis3: {
+    domain: [0, 0.15], // Bottom 15% for markers
+    showgrid: false,
+    zeroline: false,
+    showticklabels: false,
+    range: [0, 1],
+    fixedrange: true,
+    title: '업로드<br>트랙',
+    titlefont: { color: '#888', size: 10 }
+  },
+  legend: { ...plotlyLayout.legend, orientation: 'h', y: -0.15 },
+  margin: { t: 40, r: 80, b: 60, l: 70 },
+  hoverlabel: { bgcolor: '#1e2030', bordercolor: '#3a3d4a', font: { size: 12, color: '#e0e0e0' } },
+  hovermode: 'closest'
+};
+
+var tsChartData = [
+  { x: DATA.dates, y: DATA.daily_follower, type: 'scatter', mode: 'lines', name: 'Daily 팔로워', line: { color: '#7986cb', width: 1.5, shape: 'spline' }, yaxis: 'y', hoverinfo: 'x+y', hovertemplate: '%{x}<br>팔로워: %{y:,}<extra></extra>' },
+  { x: DATA.dates, y: DATA.daily_views, type: 'scatter', mode: 'lines', name: 'Daily 조회수', line: { color: '#26c6da', width: 1.5, shape: 'spline' }, yaxis: 'y2', hoverinfo: 'x+y', hovertemplate: '%{x}<br>조회수: %{y:,}<extra></extra>' },
+  // Marker tracks mapped to yaxis3 (the bottom 15% space)
+  { x: supplyDates, y: supplyRailY, type: 'scatter', mode: 'markers', name: '수급 콘텐츠', yaxis: 'y3', marker: { color: '#64b5f6', size: 10, symbol: 'circle', line: { color: '#fff', width: 1 } }, text: supplyText, customdata: supplyCustomData, hovertemplate: '%{text}<extra></extra>' },
+  { x: originalDates, y: originalRailY, type: 'scatter', mode: 'markers', name: '오리지널 콘텐츠', yaxis: 'y3', marker: { color: '#ffb74d', size: 12, symbol: 'star', line: { color: '#fff', width: 1 } }, text: originalText, customdata: originalCustomData, hovertemplate: '%{text}<extra></extra>' }
+];
+
+var tsChart = document.getElementById('chart-timeseries');
+Plotly.newPlot(tsChart, tsChartData, tsLayout, { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'] });
+
+// --- Handle Clicks for Links ---
+tsChart.on('plotly_click', function(data){
+  if(data.points && data.points[0].customdata && data.points[0].customdata.url) {
+    var url = data.points[0].customdata.url;
+    if(url) {
+      window.open(url, '_blank');
+    }
+  }
+});
+
+</script>
+</body>
+</html>
