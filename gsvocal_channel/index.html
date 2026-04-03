@@ -90,7 +90,7 @@
       <div style="display:flex;align-items:center;gap:8px;"><div style="width:16px;height:16px;background:rgba(255,165,0,0.25);border:1px solid rgba(255,165,0,0.5);border-radius:4px;"></div><span style="font-size:0.9rem;color:#aaa;">오리지널 캠페인 기간</span></div>
       <div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;background:#64b5f6;border-radius:50%;"></div><span style="font-size:0.9rem;color:#aaa;">수급 콘텐츠 업로드</span></div>
       <div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;background:#ffb74d;border-radius:50%;"></div><span style="font-size:0.9rem;color:#aaa;">오리지널 콘텐츠 업로드</span></div>
-      <div style="display:flex;align-items:center;gap:8px;"><div style="width:20px;height:2px;background:#4db6ac;"></div><span style="font-size:0.9rem;color:#aaa;">조회수 추세선 (Trendline)</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><div style="width:20px;height:2px;background:#4db6ac;"></div><span style="font-size:0.9rem;color:#aaa;">조회수 4주 이동평균선</span></div>
     </div>
   </div>
 </div>
@@ -137,16 +137,14 @@ function buildDATA(rows) {
   const daily_views = records.map(r => parseNum(r.daily_views));
   const total_followers = records.map(r => parseNum(r.channel_total_followers));
 
-  // Linear trendline
-  const n = daily_views.length;
-  const xArr = daily_views.map((_, i) => i);
-  const sumX = xArr.reduce((a, b) => a + b, 0);
-  const sumY = daily_views.reduce((a, b) => a + b, 0);
-  const sumXY = xArr.reduce((a, xi, i) => a + xi * daily_views[i], 0);
-  const sumX2 = xArr.reduce((a, xi) => a + xi * xi, 0);
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  const intercept = (sumY - slope * sumX) / n;
-  const trendline = xArr.map(xi => Math.round(intercept + slope * xi));
+  // 4주(28일) 이동평균선
+  const window28 = 28;
+  const trendline = daily_views.map((_, i) => {
+    const start = Math.max(0, i - window28 + 1);
+    const slice = daily_views.slice(start, i + 1);
+    const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+    return Math.round(avg);
+  });
 
   // Monthly aggregates
   const monthMap = {};
@@ -429,7 +427,7 @@ var tsChartData = [
   // Y1: Daily Views
   { x: DATA.dates, y: DATA.daily_views, type: 'scatter', mode: 'lines', name: 'Daily 조회수', line: { color: 'rgba(38, 198, 218, 0.4)', width: 1.5 }, yaxis: 'y', hoverinfo: 'x+y', hovertemplate: '%{x}<br>조회수: %{y:,}<extra></extra>' },
   // Y1: Trendline (Linear Regression)
-  { x: DATA.dates, y: DATA.trendline, type: 'scatter', mode: 'lines', name: '조회수 추세선', line: { color: '#4db6ac', width: 2, dash: 'dash' }, yaxis: 'y', hoverinfo: 'none' },
+  { x: DATA.dates, y: DATA.trendline, type: 'scatter', mode: 'lines', name: '4주 이동평균선', line: { color: '#4db6ac', width: 2, dash: 'dash' }, yaxis: 'y', hoverinfo: 'none' },
   // Y2: Total Followers (Cumulative)
   { x: DATA.dates, y: DATA.total_followers, type: 'scatter', mode: 'lines', name: '누적 팔로워 수', line: { color: '#ab47bc', width: 2.5, shape: 'spline' }, yaxis: 'y2', hoverinfo: 'x+y', hovertemplate: '%{x}<br>누적 팔로워: %{y:,}<extra></extra>' },
   // Marker Tracks (Y3)
