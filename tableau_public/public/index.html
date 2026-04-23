@@ -864,22 +864,62 @@ const _jwt = {
 };
 
 async function injectToken(vizId) {
-  const viz = document.getElementById(vizId);
-  if (!viz) return;
+  // vizId = "viz-{dashId}"
+  const dashId = vizId.replace('viz-', '');
+  const slot   = document.getElementById('viz-slot-' + dashId);
+  const loader = document.getElementById('loading-' + dashId);
+  if (!slot) return;
+
+  // 이미 주입된 경우 스킵
+  if (slot.querySelector('tableau-viz')) return;
+
   try {
     const token = await _jwt.fetch();
-    viz.setAttribute('token', token);
+
+    const d = dashboards.find(x => x.id === dashId);
+    if (!d) return;
+
+    // 문제 1 수정: 해시 URL → /t/SITENAME/views/... 형식으로 정규화
+    const cleanSrc = normalizeTableauUrl(d.url);
+
+    // 문제 2 수정: 토큰 확보 후 <tableau-viz>를 동적 생성·삽입
+    const viz = document.createElement('tableau-viz');
+    viz.id = vizId;
+    viz.setAttribute('src',       cleanSrc);
+    viz.setAttribute('width',     '100%');
+    viz.setAttribute('height',    String(d.height));
+    viz.setAttribute('hide-tabs', '');
+    viz.setAttribute('toolbar',   'hidden');
+    viz.setAttribute('token',     token);
+    viz.style.cssText = 'display:block;width:100%;';
+
+    viz.addEventListener('firstinteractive', () => loader && loader.classList.add('hidden'));
+    viz.addEventListener('vizloaderror', () => {
+      if (loader) loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">⚠️ 대시보드 로딩 실패. URL 및 권한을 확인하세요.</div>';
+    });
+
+    slot.appendChild(viz);
+
+    // 타임아웃 안전망
+    setTimeout(() => {
+      if (loader && !loader.classList.contains('hidden') && !loader.innerHTML.includes('⚠️')) {
+        loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">⚠️ 응답 시간 초과. 네트워크 또는 URL을 확인하세요.</div>';
+      }
+    }, 25000);
+
   } catch {
-    const loader = document.getElementById(vizId.replace('viz-', 'loading-'));
     if (loader) {
       loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">⚠️ 인증 토큰을 가져오지 못했습니다.<br><button onclick="retryEmbed(\'' + vizId + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
     }
   }
 }
-
 async function retryEmbed(vizId) {
   _jwt.value = null;
-  const loader = document.getElementById(vizId.replace('viz-', 'loading-'));
+  const dashId = vizId.replace('viz-', '');
+  const slot   = document.getElementById('viz-slot-' + dashId);
+  const loader = document.getElementById('loading-' + dashId);
+  // 기존 viz-slot 초기화 → injectToken이 재주입 가능하도록
+  if (slot) slot.innerHTML = '';
   if (loader) {
     loader.innerHTML = '<div class="loading-spinner"></div><div class="loading-text">대시보드를 불러오는 중...</div>';
     loader.classList.remove('hidden');
@@ -1018,31 +1058,34 @@ function renderDashboardViews() {
     </section>
   `).join('');
 
-  // Viz 로드 이벤트 바인딩 + JWT 토큰 주입
-  // Tableau Cloud 대시보드: /api/token 에서 JWT를 받아와 token 속성에 주입합니다.
+  // JWT 토큰 취득 후 <tableau-viz> 동적 주입 (이벤트 바인딩도 injectToken이 처리)
   dashboards.forEach(d => {
     if (d.url && !isPublicUrl(d.url)) {
-      const viz = document.getElementById('viz-' + d.id);
-      const loader = document.getElementById('loading-' + d.id);
-      if (viz && loader) {
-        const hideLoader = () => loader.classList.add('hidden');
-        const showError = (msg) => {
-          loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">' + (msg || '⚠️ 대시보드를 불러올 수 없습니다.') + '</div>';
-        };
-        if (viz.workbook) { hideLoader(); return; }
-        viz.addEventListener('firstinteractive', hideLoader);
-        viz.addEventListener('vizloaderror', () => showError('⚠️ 대시보드 로딩 실패. URL 및 권한을 확인하세요.'));
-        // 타임아웃 안전망
-        setTimeout(() => {
-          if (!loader.classList.contains('hidden') && !loader.innerHTML.includes('⚠️')) {
-            showError('⚠️ 응답 시간 초과. 네트워크 또는 URL을 확인하세요.');
-          }
-        }, 25000);
-        // JWT 토큰 주입 (비동기) — token 속성이 설정되면 tableau-viz가 인증 재시도
-        injectToken('viz-' + d.id);
-      }
+      injectToken('viz-' + d.id);
     }
   });
+}
+
+// ─── Tableau Cloud URL 정규화 ───
+// Embedding API v3는 해시(#) URL을 인식하지 못함.
+// https://site.online.tableau.com/#/site/SITENAME/views/WB/SHEET
+//   → https://site.online.tableau.com/t/SITENAME/views/WB/SHEET
+function normalizeTableauUrl(rawUrl) {
+  if (!rawUrl) return rawUrl;
+  try {
+    if (!rawUrl.includes('#')) return rawUrl;
+    const urlObj = new URL(rawUrl);
+    const hash = urlObj.hash; // e.g. "#/site/SITENAME/views/WB/SHEET"
+    if (!hash) return rawUrl;
+    let path = hash.slice(1); // remove leading #
+    if (path.startsWith('/site/')) {
+      // /site/SITENAME/views/... → /t/SITENAME/views/...
+      path = path.replace(/^\/site\//, '/t/');
+    }
+    return urlObj.origin + path;
+  } catch (e) {
+    return rawUrl;
+  }
 }
 
 // ─── URL 타입 감지 ───
@@ -1098,22 +1141,14 @@ function renderEmbed(d) {
         onerror="(function(el){el.innerHTML='<div style=\\'color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);\\'>⚠️ 대시보드를 불러올 수 없습니다. URL을 확인하세요.</div>';})(document.getElementById('loading-${d.id}'))">
       </iframe>`;
   } else {
-    // Tableau Cloud: JWT 토큰 주입 후 <tableau-viz> 웹 컴포넌트로 임베딩
-    // token 속성은 renderDashboardViews() 후 injectToken()이 비동기로 채워줍니다.
+    // Tableau Cloud: 토큰 취득 후 <tableau-viz>를 동적으로 slot에 주입합니다.
+    // (토큰 없이 컴포넌트를 렌더링하면 인증 실패 → 빈 화면 또는 타임아웃)
     return `
       <div class="tableau-loading" id="loading-${d.id}">
         <div class="loading-spinner"></div>
         <div class="loading-text">인증 중...</div>
       </div>
-      <tableau-viz
-        id="viz-${d.id}"
-        src="${d.url}"
-        width="100%"
-        height="${d.height}"
-        hide-tabs
-        toolbar="hidden"
-        style="display:block;width:100%;">
-      </tableau-viz>`;
+      <div id="viz-slot-${d.id}" style="display:block;width:100%;"></div>`;
   }
 }
 
