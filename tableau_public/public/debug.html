@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Tableau 임베드 디버그</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Tableau Embedding API v3 -->
+  <script type="module" src="https://embedding.tableauusercontent.com/tableau.embedding.3.latest.min.js"></script>
+  <style>
+    body { font: 14px/1.5 -apple-system, sans-serif; padding: 16px; max-width: 1100px; margin: 0 auto; color: #111; }
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    h2 { font-size: 14px; margin: 20px 0 6px; color: #444; }
+    .muted { color: #777; font-size: 12px; }
+    input, button, textarea { font: inherit; padding: 6px 10px; border: 1px solid #bbb; border-radius: 6px; }
+    input[type=url] { width: 100%; box-sizing: border-box; }
+    button { background: #01696f; color: white; border-color: #01696f; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    pre { background: #f5f5f3; border: 1px solid #e0deda; border-radius: 6px; padding: 10px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+    .log { max-height: 220px; overflow: auto; font-family: monospace; font-size: 11.5px; background: #111; color: #cfc; padding: 10px; border-radius: 6px; }
+    .log .err { color: #ff9a9a; }
+    .ok { color: #0a7a34; font-weight: 600; }
+    .bad { color: #c33; font-weight: 600; }
+    .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+    .box { background: #fafaf8; border: 1px solid #e0deda; border-radius: 8px; padding: 12px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Tableau 임베드 디버그 <span class="muted">/debug.html</span></h1>
+  <p class="muted">이 페이지는 메인 포털과 독립적으로 <code>/api/token</code> → JWT 디코딩 → <code>&lt;tableau-viz&gt;</code> 로딩의 전 과정을 가시화합니다.</p>
+
+  <div class="box">
+    <label for="url"><b>대시보드 URL</b></label>
+    <div class="row">
+      <input type="url" id="url" placeholder="https://prod-kr-a.online.tableau.com/t/beyondmusic/views/WORKBOOK/VIEW">
+    </div>
+    <div class="row">
+      <button id="runBtn">실행</button>
+      <button id="tokenOnlyBtn" style="background:#666;border-color:#666;">토큰만 확인</button>
+      <span class="muted">/#/site/… 형식도 입력 가능 (자동 정규화됨)</span>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>1. /api/token 응답</h2>
+    <pre id="tokenOut">실행 대기 중…</pre>
+    <h2>2. JWT 디코딩 결과</h2>
+    <pre id="jwtOut">실행 대기 중…</pre>
+  </div>
+
+  <div class="box">
+    <h2>3. 정규화된 임베드 URL</h2>
+    <pre id="embedUrlOut">실행 대기 중…</pre>
+    <h2>4. 이벤트 로그</h2>
+    <div class="log" id="eventLog">대기 중…</div>
+  </div>
+
+  <div class="box">
+    <h2>5. 임베드 (실제 &lt;tableau-viz&gt;)</h2>
+    <div id="vizHost" style="min-height:500px;"></div>
+  </div>
+
+  <script>
+    // ─── URL 정규화 (메인 포털과 동일 로직) ───
+    function isPublicUrl(u) { return !!u && u.includes('public.tableau.com'); }
+    function normalizeTableauUrl(url) {
+      if (!url) return url;
+      if (isPublicUrl(url)) return url;
+      try {
+        const m = url.match(/^(https?:\/\/[^/]+)\/(?:#\/)?site\/([^/]+)\/views\/(.+?)(?:\?.*)?$/i)
+               || url.match(/^(https?:\/\/[^/]+)\/#\/site\/([^/]+)\/views\/(.+?)(?:\?.*)?$/i);
+        if (m) return `${m[1]}/t/${m[2]}/views/${m[3].split('?')[0]}`;
+        if (/\/t\/[^/]+\/views\//.test(url)) return url.split('?')[0];
+        const m2 = url.match(/^(https?:\/\/[^/]+)\/#\/views\/(.+?)(?:\?.*)?$/i);
+        if (m2) return `${m2[1]}/views/${m2[2].split('?')[0]}`;
+        return url;
+      } catch { return url; }
+    }
+
+    function log(msg, cls) {
+      const el = document.getElementById('eventLog');
+      const line = document.createElement('div');
+      const ts = new Date().toTimeString().slice(0, 8);
+      if (cls) line.className = cls;
+      line.textContent = `[${ts}] ${msg}`;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function decodeJwt(token) {
+      try {
+        const [h, p] = token.split('.');
+        const pad = s => s + '==='.slice((s.length + 3) % 4);
+        const fix = s => pad(s.replace(/-/g, '+').replace(/_/g, '/'));
+        return {
+          header: JSON.parse(atob(fix(h))),
+          payload: JSON.parse(atob(fix(p))),
+        };
+      } catch (e) { return { error: e.message }; }
+    }
+
+    async function fetchToken() {
+      const started = performance.now();
+      const res = await fetch('/api/token', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const elapsed = Math.round(performance.now() - started);
+      const text = await res.text();
+      let body; try { body = JSON.parse(text); } catch { body = text; }
+      return { status: res.status, ok: res.ok, body, elapsed };
+    }
+
+    async function runTokenOnly() {
+      document.getElementById('tokenOut').textContent = '요청 중…';
+      document.getElementById('jwtOut').textContent = '';
+      try {
+        const r = await fetchToken();
+        document.getElementById('tokenOut').textContent =
+          `HTTP ${r.status} ${r.ok ? '✅' : '❌'} (${r.elapsed}ms)\n\n` +
+          (typeof r.body === 'object' ? JSON.stringify(r.body, null, 2) : r.body);
+        if (r.ok && r.body && r.body.token) {
+          const dec = decodeJwt(r.body.token);
+          document.getElementById('jwtOut').textContent = JSON.stringify(dec, null, 2);
+          const exp = dec.payload && dec.payload.exp;
+          if (exp) {
+            const remain = exp - Math.floor(Date.now()/1000);
+            log(`토큰 발급 성공: sub=${dec.payload.sub}, exp in ${remain}s`, 'ok');
+          }
+        } else {
+          log(`토큰 발급 실패: HTTP ${r.status}`, 'err');
+        }
+        return r;
+      } catch (e) {
+        document.getElementById('tokenOut').textContent = '오류: ' + e.message;
+        log('fetch 실패: ' + e.message, 'err');
+        return null;
+      }
+    }
+
+    async function runFull() {
+      document.getElementById('eventLog').innerHTML = '';
+      const urlInput = document.getElementById('url').value.trim();
+      if (!urlInput) { alert('대시보드 URL을 입력하세요'); return; }
+
+      const embedUrl = normalizeTableauUrl(urlInput);
+      document.getElementById('embedUrlOut').textContent =
+        `입력 URL: ${urlInput}\n\n정규화 결과: ${embedUrl}${embedUrl === urlInput ? '  (변경 없음)' : '  ← 변환됨'}`;
+      log('정규화된 URL: ' + embedUrl);
+
+      const r = await runTokenOnly();
+      if (!r || !r.ok || !r.body || !r.body.token) {
+        log('토큰 없이 진행 중단', 'err');
+        return;
+      }
+
+      // tableau-viz 마운트 + 전체 이벤트 구독
+      const host = document.getElementById('vizHost');
+      host.innerHTML = '';
+      const viz = document.createElement('tableau-viz');
+      viz.id = 'debugViz';
+      viz.setAttribute('src', embedUrl);
+      viz.setAttribute('token', r.body.token);
+      viz.setAttribute('width', '100%');
+      viz.setAttribute('height', '500');
+      viz.setAttribute('hide-tabs', '');
+      viz.setAttribute('toolbar', 'hidden');
+      host.appendChild(viz);
+      log('&lt;tableau-viz&gt; 마운트 완료, 이벤트 대기 중…');
+
+      const events = [
+        'firstinteractive', 'firstvizsizeknown', 'workbookready',
+        'vizloaderror', 'tabswitched', 'editinprogress', 'error',
+      ];
+      events.forEach(name => {
+        viz.addEventListener(name, ev => {
+          let detail = '';
+          try { detail = JSON.stringify(ev.detail || {}).slice(0, 300); } catch {}
+          log(`event: ${name} ${detail}`, name === 'vizloaderror' || name === 'error' ? 'err' : 'ok');
+        });
+      });
+
+      // 전역 에러 캡처
+      window.addEventListener('error', e => log('window error: ' + e.message, 'err'));
+      window.addEventListener('unhandledrejection', e => log('promise rejection: ' + (e.reason && e.reason.message || e.reason), 'err'));
+
+      // 30초 감시 타이머
+      setTimeout(() => log('⏱ 30초 경과 — 지금까지 firstinteractive 이벤트가 없으면 Tableau 쪽 거부(권한/도메인 허용) 가능성 높음.', 'err'), 30000);
+    }
+
+    document.getElementById('runBtn').addEventListener('click', runFull);
+    document.getElementById('tokenOnlyBtn').addEventListener('click', runTokenOnly);
+    // 기본값 프리필
+    document.getElementById('url').value = 'https://prod-kr-a.online.tableau.com/#/site/beyondmusic/views/_17707711277260/sheet0_1?:iid=1';
+  </script>
+</body>
+</html>
