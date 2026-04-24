@@ -107,6 +107,22 @@
       return { status: res.status, ok: res.ok, body, elapsed };
     }
 
+    async function checkSdkReachability() {
+      const urls = [
+        'https://embedding.tableauusercontent.com/tableau.embedding.3.latest.min.js',
+        'https://prod-kr-a.online.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js',
+      ];
+      for (const u of urls) {
+        try {
+          const t0 = performance.now();
+          const r = await fetch(u, { method: 'GET', mode: 'no-cors' });
+          log('SDK reachable: ' + u.split('/').pop().slice(0, 40) + ' @ ' + u.split('/')[2] + ' (' + Math.round(performance.now() - t0) + 'ms)', 'ok');
+        } catch (e) {
+          log('SDK 도달 불가: ' + u + ' — ' + e.message, 'err');
+        }
+      }
+    }
+
     async function runTokenOnly() {
       document.getElementById('tokenOut').textContent = '요청 중…';
       document.getElementById('jwtOut').textContent = '';
@@ -139,6 +155,9 @@
       const urlInput = document.getElementById('url').value.trim();
       if (!urlInput) { alert('대시보드 URL을 입력하세요'); return; }
 
+      // SDK 네트워크 도달 가능성 먼저 체크
+      await checkSdkReachability();
+
       const embedUrl = normalizeTableauUrl(urlInput);
       document.getElementById('embedUrlOut').textContent =
         `입력 URL: ${urlInput}\n\n정규화 결과: ${embedUrl}${embedUrl === urlInput ? '  (변경 없음)' : '  ← 변환됨'}`;
@@ -164,6 +183,37 @@
       host.appendChild(viz);
       log('&lt;tableau-viz&gt; 마운트 완료, 이벤트 대기 중…');
 
+      // ─── SDK 상태 점검 ───
+      const sdkScriptLoaded = Array.from(document.scripts).some(s => s.src && s.src.includes('tableau.embedding.3'));
+      const customElDefined = !!customElements.get('tableau-viz');
+      log('SDK <script> 태그 존재: ' + sdkScriptLoaded, sdkScriptLoaded ? 'ok' : 'err');
+      log('customElements.get("tableau-viz"): ' + customElDefined, customElDefined ? 'ok' : 'err');
+      if (!customElDefined) {
+        // 최대 10초까지 대기 후 재확인
+        const waitStart = Date.now();
+        const poll = setInterval(() => {
+          const ok = !!customElements.get('tableau-viz');
+          if (ok) {
+            clearInterval(poll);
+            log('→ ' + Math.round((Date.now() - waitStart) / 1000) + 's 후 SDK 로드 완료됨', 'ok');
+          } else if (Date.now() - waitStart > 10000) {
+            clearInterval(poll);
+            log('→ 10초 내 SDK 로드 안 됨: 네트워크 탭에서 tableau.embedding.3.latest.min.js 차단 여부 확인 필요', 'err');
+          }
+        }, 500);
+      }
+
+      // 5초 후 tableau-viz 내부에 iframe이 생겼는지 확인
+      setTimeout(() => {
+        const iframe = viz.querySelector('iframe') || viz.shadowRoot?.querySelector('iframe');
+        if (iframe) {
+          log('5초 후 내부 iframe 발견: src=' + (iframe.src || '(empty)'), 'ok');
+        } else {
+          log('5초 후 내부 iframe 없음 — SDK가 임베드 요청을 만들지 못함', 'err');
+        }
+        log('viz.constructor.name = ' + viz.constructor.name);
+      }, 5000);
+
       const events = [
         'firstinteractive', 'firstvizsizeknown', 'workbookready',
         'vizloaderror', 'tabswitched', 'editinprogress', 'error',
@@ -177,12 +227,21 @@
       });
 
       // 전역 에러 캡처
-      window.addEventListener('error', e => log('window error: ' + e.message, 'err'));
+      window.addEventListener('error', e => log('window error: ' + e.message + ' (' + (e.filename || '') + ')', 'err'));
       window.addEventListener('unhandledrejection', e => log('promise rejection: ' + (e.reason && e.reason.message || e.reason), 'err'));
 
       // 30초 감시 타이머
       setTimeout(() => log('⏱ 30초 경과 — 지금까지 firstinteractive 이벤트가 없으면 Tableau 쪽 거부(권한/도메인 허용) 가능성 높음.', 'err'), 30000);
     }
+
+    // SDK 스크립트 로드 실패 감지
+    (function checkSdkLoad() {
+      const scriptEl = document.querySelector('script[src*="tableau.embedding.3"]');
+      if (scriptEl) {
+        scriptEl.addEventListener('error', () => log('❌ tableau.embedding.3.latest.min.js 로드 실패', 'err'));
+        scriptEl.addEventListener('load', () => log('✓ tableau.embedding.3.latest.min.js 로드 완료', 'ok'));
+      }
+    })();
 
     document.getElementById('runBtn').addEventListener('click', runFull);
     document.getElementById('tokenOnlyBtn').addEventListener('click', runTokenOnly);
