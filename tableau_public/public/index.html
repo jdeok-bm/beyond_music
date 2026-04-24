@@ -951,10 +951,11 @@ function _escapeHtml(s) {
 
 async function injectToken(vizId) {
   const viz = document.getElementById(vizId);
-  if (!viz) return;
+  if (!viz) return false;
   try {
     const token = await _jwt.fetch();
     viz.setAttribute('token', token);
+    return true;
   } catch (err) {
     const loader = document.getElementById(vizId.replace('viz-', 'loading-'));
     if (loader) {
@@ -970,6 +971,7 @@ async function injectToken(vizId) {
       }
       loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 인증 토큰을 가져오지 못했습니다.<br><span style="opacity:.85;">' + _escapeHtml(status) + (detail ? ' · ' + _escapeHtml(detail) : '') + '</span><br><a href="/api/diag" target="_blank" style="color:var(--color-error);text-decoration:underline;margin-top:4px;display:inline-block;font-size:11px;">환경변수 진단 열기</a><br><button onclick="retryEmbed(\'' + vizId + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
     }
+    return false;
   }
 }
 
@@ -1138,28 +1140,57 @@ function renderDashboardViews() {
       const viz = document.getElementById('viz-' + d.id);
       const loader = document.getElementById('loading-' + d.id);
       if (viz && loader) {
+        const t0 = performance.now();
+        const stamp = (label) => {
+          const dt = Math.round(performance.now() - t0);
+          console.log(`[tableau-viz:${d.id}] +${dt}ms ${label}`);
+        };
+        const setStage = (text, sub) => {
+          const textEl = loader.querySelector('.loading-text');
+          if (textEl) {
+            textEl.innerHTML = text + (sub
+              ? `<br><span style="display:block;margin-top:4px;font-size:10px;opacity:.7;">${sub}</span>`
+              : '');
+          }
+        };
         const hideLoader = () => loader.classList.add('hidden');
         const showError = (msg) => {
           loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">' + (msg || '⚠️ 대시보드를 불러올 수 없습니다.') + '</div>';
         };
         if (viz.workbook) { hideLoader(); return; }
+
         // 전체 Tableau 이벤트를 콘솔에 기록 (디버깅용)
         ['firstinteractive','firstvizsizeknown','workbookready','vizloaderror','tabswitched','editinprogress','error']
-          .forEach(evt => viz.addEventListener(evt, e => console.log('[tableau-viz:' + d.id + ']', evt, e && e.detail)));
+          .forEach(evt => viz.addEventListener(evt, e => {
+            stamp(evt);
+            console.log('[tableau-viz:' + d.id + ']', evt, e && e.detail);
+          }));
         console.log('[tableau-viz:' + d.id + '] src =', viz.getAttribute('src'));
-        viz.addEventListener('firstinteractive', hideLoader);
+
+        // 단계별 로더 텍스트 전환 — "인증 중..." 이 데이터 로딩·렌더링 시간까지 모두 포함해 길어 보이던 문제를 해결
+        viz.addEventListener('workbookready',      () => setStage('워크북 준비 완료', '데이터 렌더링 대기…'));
+        viz.addEventListener('firstvizsizeknown',  () => setStage('차트 그리는 중…',   '복잡한 대시보드는 수십 초 걸릴 수 있습니다'));
+        viz.addEventListener('firstinteractive',   () => { stamp('firstinteractive(hideLoader)'); hideLoader(); });
         viz.addEventListener('vizloaderror', (e) => {
           const detail = e && e.detail ? JSON.stringify(e.detail).slice(0, 200) : '';
           showError('⚠️ 대시보드 로딩 실패. URL 및 권한을 확인하세요.' + (detail ? '<br><span style="opacity:.7;font-size:10px;">' + _escapeHtml(detail) + '</span>' : ''));
         });
-        // 타임아웃 안전망
+
+        // 타임아웃 안전망 (60초로 늘림 — 큰 대시보드는 25초로 부족)
         setTimeout(() => {
           if (!loader.classList.contains('hidden') && !loader.innerHTML.includes('⚠️')) {
-            loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 응답 시간 초과 (25초)<br><span style="opacity:.85;">대시보드 URL · Tableau 사이트 · Connected App 설정 확인</span><br><a href="/api/diag" target="_blank" style="color:var(--color-error);text-decoration:underline;margin-top:4px;display:inline-block;font-size:11px;">환경변수 진단 열기</a><br><button onclick="retryEmbed(\'viz-' + d.id + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
+            loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 응답 시간 초과 (60초)<br><span style="opacity:.85;">Tableau 서버 응답 지연 · 대시보드 크기 · 권한 확인</span><br><a href="/api/diag" target="_blank" style="color:var(--color-error);text-decoration:underline;margin-top:4px;display:inline-block;font-size:11px;">환경변수 진단 열기</a><br><button onclick="retryEmbed(\'viz-' + d.id + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
           }
-        }, 25000);
-        // JWT 토큰 주입 (비동기) — token 속성이 설정되면 tableau-viz가 인증 재시도
-        injectToken('viz-' + d.id);
+        }, 60000);
+
+        // JWT 토큰 주입 (비동기). 토큰이 주입되면 tableau-viz 가 인증을 재개합니다.
+        stamp('token-fetch 시작');
+        setStage('인증 중…', 'JWT 토큰 요청');
+        injectToken('viz-' + d.id).then((ok) => {
+          if (!ok) return; // 실패 시 injectToken 내부에서 에러 메시지 처리됨
+          stamp('token-injected');
+          setStage('Tableau 연결 중…', '서버에서 워크북 정의를 받는 중');
+        });
       }
     }
   });
