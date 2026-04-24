@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>계약 프로세스 트래커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root,[data-theme="light"]{
+  --bg:#f7f6f2;--surface:#f9f8f5;--surface-off:#f0ede8;--surface-dyn:#e6e4df;
+  --border:#d4d1ca;--divider:#e8e5e0;
+  --text:#28251d;--text-muted:#7a7974;--text-faint:#bab9b4;
+  --s0-fg:#006494;--s0-hl:#d0e5f0;
+  --s1-fg:#da7101;--s1-hl:#f5e2cc;
+  --s2-fg:#b88000;--s2-hl:#f0e8cb;
+  --s3-fg:#7a39bb;--s3-hl:#e8dcf5;
+  --s4-fg:#01696f;--s4-hl:#cedcd8;
+  --s5-fg:#437a22;--s5-hl:#d4dfcc;
+  --s6-fg:#a12c7b;--s6-hl:#f5dded;
+  --s7-fg:#6b6b6b;--s7-hl:#ebebeb;
+  --shadow-sm:0 1px 3px oklch(0.2 0.01 80/.07);
+  --shadow-md:0 4px 14px oklch(0.2 0.01 80/.11);
+  --shadow-lg:0 14px 36px oklch(0.2 0.01 80/.15);
+  --shadow-xl:0 24px 60px oklch(0.2 0.01 80/.2);
+  --r-sm:.375rem;--r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;--r-2xl:1.25rem;--r-full:9999px;
+  --ease:200ms cubic-bezier(0.16,1,0.3,1);
+  --font:'Noto Sans KR',sans-serif;--mono:'DM Mono',monospace;
+}
+[data-theme="dark"]{
+  --bg:#171614;--surface:#1c1b19;--surface-off:#232220;--surface-dyn:#2d2c2a;
+  --border:#393836;--divider:#2e2d2b;
+  --text:#cdccca;--text-muted:#797876;--text-faint:#5a5957;
+  --s0-fg:#5591c7;--s0-hl:#2a3b4e;
+  --s1-fg:#fdab43;--s1-hl:#4a3320;
+  --s2-fg:#e8af34;--s2-hl:#3e2e10;
+  --s3-fg:#a86fdf;--s3-hl:#332040;
+  --s4-fg:#4f98a3;--s4-hl:#1e3336;
+  --s5-fg:#6daa45;--s5-hl:#233015;
+  --s6-fg:#d163a7;--s6-hl:#3a1428;
+  --s7-fg:#999;--s7-hl:#252525;
+  --shadow-sm:0 1px 2px oklch(0 0 0/.22);
+  --shadow-md:0 4px 12px oklch(0 0 0/.34);
+  --shadow-lg:0 14px 36px oklch(0 0 0/.46);
+  --shadow-xl:0 24px 60px oklch(0 0 0/.55);
+}
+/* ── STATUS FG SHORTHAND (used in JS via getComputedStyle trick OR via class) ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{font-family:var(--font);font-size:15px;color:var(--text);background:var(--bg);min-height:100dvh;line-height:1.6;transition:background var(--ease),color var(--ease)}
+button{cursor:pointer;background:none;border:none;font:inherit;color:inherit}
+a,button,[role=button]{transition:color var(--ease),background var(--ease),border-color var(--ease),box-shadow var(--ease)}
+:focus-visible{outline:2px solid var(--s4-fg);outline-offset:3px;border-radius:var(--r-sm)}
+
+/* ── HEADER ── */
+.header{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:58px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow-sm)}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo{width:34px;height:34px;border-radius:var(--r-md);background:var(--s4-fg);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.header-title{font-size:16px;font-weight:700;letter-spacing:-.02em}
+.header-sub{font-size:12px;color:var(--text-muted)}
+.icon-btn{width:38px;height:38px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;color:var(--text-muted)}
+.icon-btn:hover{background:var(--surface-off);color:var(--text)}
+.header-actions{display:flex;gap:8px;align-items:center}
+
+/* ── UPLOAD ── */
+#uploadScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 58px);padding:40px 24px;gap:24px}
+.upload-card{width:100%;max-width:480px;background:var(--surface);border:2px dashed var(--border);border-radius:var(--r-2xl);padding:48px 32px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;cursor:pointer;transition:border-color var(--ease),background var(--ease),box-shadow var(--ease)}
+.upload-card:hover,.upload-card.drag-over{border-color:var(--s4-fg);background:var(--s4-hl);box-shadow:var(--shadow-md)}
+.upload-icon{width:60px;height:60px;border-radius:var(--r-xl);background:var(--s4-hl);display:flex;align-items:center;justify-content:center;color:var(--s4-fg)}
+.upload-title{font-size:18px;font-weight:700}
+.upload-desc{font-size:14px;color:var(--text-muted);line-height:1.65;max-width:320px}
+.upload-btn{margin-top:8px;padding:11px 26px;background:var(--s4-fg);color:#fff;border-radius:var(--r-full);font-size:14px;font-weight:600}
+.upload-btn:hover{filter:brightness(1.12)}
+.upload-spec{font-size:12px;color:var(--text-faint);background:var(--surface-off);border-radius:var(--r-lg);padding:14px 20px;max-width:480px;width:100%;line-height:1.8;text-align:left}
+.upload-spec strong{color:var(--text-muted);display:block;margin-bottom:2px}
+.upload-spec code{font-family:var(--mono);font-size:11px;background:var(--surface-dyn);padding:1px 5px;border-radius:3px}
+#fileInput{display:none}
+
+/* ── APP LAYOUT ── */
+#appScreen{display:none}
+.app-layout{display:flex;min-height:calc(100dvh - 58px)}
+.sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:58px;height:calc(100dvh - 58px);overflow-y:auto}
+.sidebar-header{padding:16px 16px 8px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);display:flex;align-items:center;justify-content:space-between}
+.ccount{background:var(--surface-dyn);color:var(--text-muted);font-size:11px;font-weight:600;font-family:var(--mono);padding:1px 7px;border-radius:var(--r-full)}
+.sidebar-list{padding:0 8px 16px;flex:1}
+.contract-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--r-lg);cursor:pointer;transition:background var(--ease);margin-bottom:2px}
+.contract-item:hover{background:var(--surface-off)}
+.contract-item.active{background:var(--s4-hl)}
+.contract-item.active .c-name{color:var(--s4-fg);font-weight:700}
+.c-dot{width:8px;height:8px;border-radius:var(--r-full);background:var(--border);flex-shrink:0;transition:background var(--ease)}
+.contract-item.active .c-dot{background:var(--s4-fg)}
+.c-info{flex:1;min-width:0}
+.c-name{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-meta{font-size:11px;color:var(--text-muted)}
+.sidebar-up-btn{margin:0 8px 16px;padding:10px 12px;border:1.5px dashed var(--border);border-radius:var(--r-lg);font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:8px}
+.sidebar-up-btn:hover{border-color:var(--s4-fg);color:var(--s4-fg);background:var(--s4-hl)}
+.content{flex:1;padding:28px 32px 80px;min-width:0}
+.contract-header{margin-bottom:26px;padding-bottom:20px;border-bottom:1px solid var(--divider)}
+.contract-title{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.contract-meta-row{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.contract-tag{font-size:12px;font-weight:600;padding:3px 11px;border-radius:var(--r-full)}
+.section-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px}
+
+/* ── PIPELINE ── */
+.pipeline-wrap{margin-bottom:0}
+.pipeline{
+  display:flex;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-2xl);
+  overflow:visible;box-shadow:var(--shadow-sm);margin-top:18px;
+}
+.pipe-step{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:20px 10px 18px;cursor:pointer;position:relative;
+  border-right:1px solid var(--border);
+  transition:background var(--ease),box-shadow var(--ease);
+}
+.pipe-step:first-child{border-radius:var(--r-2xl) 0 0 var(--r-2xl)}
+.pipe-step:last-child{border-right:none;border-radius:0 var(--r-2xl) var(--r-2xl) 0}
+
+/* hover & selected per status index */
+.pipe-step.pi-0:hover,.pipe-step.pi-0.selected{background:var(--s0-hl);box-shadow:inset 0 0 0 2px var(--s0-fg)}
+.pipe-step.pi-1:hover,.pipe-step.pi-1.selected{background:var(--s1-hl);box-shadow:inset 0 0 0 2px var(--s1-fg)}
+.pipe-step.pi-2:hover,.pipe-step.pi-2.selected{background:var(--s2-hl);box-shadow:inset 0 0 0 2px var(--s2-fg)}
+.pipe-step.pi-3:hover,.pipe-step.pi-3.selected{background:var(--s3-hl);box-shadow:inset 0 0 0 2px var(--s3-fg)}
+.pipe-step.pi-4:hover,.pipe-step.pi-4.selected{background:var(--s4-hl);box-shadow:inset 0 0 0 2px var(--s4-fg)}
+.pipe-step.pi-5:hover,.pipe-step.pi-5.selected{background:var(--s5-hl);box-shadow:inset 0 0 0 2px var(--s5-fg)}
+.pipe-step.pi-6:hover,.pipe-step.pi-6.selected{background:var(--s6-hl);box-shadow:inset 0 0 0 2px var(--s6-fg)}
+.pipe-step.pi-7:hover,.pipe-step.pi-7.selected{background:var(--s7-hl);box-shadow:inset 0 0 0 2px var(--s7-fg)}
+
+/* done = keep tint, use status color for checkmark */
+.pipe-step.done .pipe-num{color:#fff}
+.pipe-step.pi-0.done .pipe-num{background:var(--s0-fg)}
+.pipe-step.pi-1.done .pipe-num{background:var(--s1-fg)}
+.pipe-step.pi-2.done .pipe-num{background:var(--s2-fg)}
+.pipe-step.pi-3.done .pipe-num{background:var(--s3-fg)}
+.pipe-step.pi-4.done .pipe-num{background:var(--s4-fg)}
+.pipe-step.pi-5.done .pipe-num{background:var(--s5-fg)}
+.pipe-step.pi-6.done .pipe-num{background:var(--s6-fg)}
+.pipe-step.pi-7.done .pipe-num{background:var(--s7-fg)}
+.pipe-step.pi-0.done .pipe-name{color:var(--s0-fg);font-weight:600}
+.pipe-step.pi-1.done .pipe-name{color:var(--s1-fg);font-weight:600}
+.pipe-step.pi-2.done .pipe-name{color:var(--s2-fg);font-weight:600}
+.pipe-step.pi-3.done .pipe-name{color:var(--s3-fg);font-weight:600}
+.pipe-step.pi-4.done .pipe-name{color:var(--s4-fg);font-weight:600}
+.pipe-step.pi-5.done .pipe-name{color:var(--s5-fg);font-weight:600}
+.pipe-step.pi-6.done .pipe-name{color:var(--s6-fg);font-weight:600}
+.pipe-step.pi-7.done .pipe-name{color:var(--s7-fg);font-weight:600}
+
+/* current */
+.pipe-step.pi-0.current .pipe-num{background:var(--s0-fg);color:#fff}
+.pipe-step.pi-1.current .pipe-num{background:var(--s1-fg);color:#fff}
+.pipe-step.pi-2.current .pipe-num{background:var(--s2-fg);color:#fff}
+.pipe-step.pi-3.current .pipe-num{background:var(--s3-fg);color:#fff}
+.pipe-step.pi-4.current .pipe-num{background:var(--s4-fg);color:#fff}
+.pipe-step.pi-5.current .pipe-num{background:var(--s5-fg);color:#fff}
+.pipe-step.pi-6.current .pipe-num{background:var(--s6-fg);color:#fff}
+.pipe-step.pi-7.current .pipe-num{background:var(--s7-fg);color:#fff}
+.pipe-step.pi-0.current .pipe-name{color:var(--s0-fg);font-weight:700}
+.pipe-step.pi-1.current .pipe-name{color:var(--s1-fg);font-weight:700}
+.pipe-step.pi-2.current .pipe-name{color:var(--s2-fg);font-weight:700}
+.pipe-step.pi-3.current .pipe-name{color:var(--s3-fg);font-weight:700}
+.pipe-step.pi-4.current .pipe-name{color:var(--s4-fg);font-weight:700}
+.pipe-step.pi-5.current .pipe-name{color:var(--s5-fg);font-weight:700}
+.pipe-step.pi-6.current .pipe-name{color:var(--s6-fg);font-weight:700}
+.pipe-step.pi-7.current .pipe-name{color:var(--s7-fg);font-weight:700}
+
+.pipe-num{width:30px;height:30px;border-radius:var(--r-full);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:var(--border);color:var(--text-muted);transition:background var(--ease),color var(--ease)}
+.pipe-name{font-size:14px;font-weight:500;text-align:center;color:var(--text-muted);line-height:1.3;transition:color var(--ease)}
+
+/* current badge */
+.current-badge{
+  position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);
+  color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em;
+  padding:3px 11px;border-radius:var(--r-full);white-space:nowrap;pointer-events:none;
+}
+.current-badge::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent}
+.pipe-step.pi-0 .current-badge{background:var(--s0-fg)}
+.pipe-step.pi-0 .current-badge::after{border-top-color:var(--s0-fg)}
+.pipe-step.pi-1 .current-badge{background:var(--s1-fg)}
+.pipe-step.pi-1 .current-badge::after{border-top-color:var(--s1-fg)}
+.pipe-step.pi-2 .current-badge{background:var(--s2-fg)}
+.pipe-step.pi-2 .current-badge::after{border-top-color:var(--s2-fg)}
+.pipe-step.pi-3 .current-badge{background:var(--s3-fg)}
+.pipe-step.pi-3 .current-badge::after{border-top-color:var(--s3-fg)}
+.pipe-step.pi-4 .current-badge{background:var(--s4-fg)}
+.pipe-step.pi-4 .current-badge::after{border-top-color:var(--s4-fg)}
+.pipe-step.pi-5 .current-badge{background:var(--s5-fg)}
+.pipe-step.pi-5 .current-badge::after{border-top-color:var(--s5-fg)}
+.pipe-step.pi-6 .current-badge{background:var(--s6-fg)}
+.pipe-step.pi-6 .current-badge::after{border-top-color:var(--s6-fg)}
+.pipe-step.pi-7 .current-badge{background:var(--s7-fg)}
+.pipe-step.pi-7 .current-badge::after{border-top-color:var(--s7-fg)}
+
+/* ── DETAIL SECTION ── */
+.detail-section{margin-top:0}
+.detail-section.hidden{display:none}
+.detail-row{display:flex;gap:0}
+.detail-col{flex:1;min-width:0;padding:14px 10px 0;border-right:1px solid var(--divider);transition:opacity var(--ease),filter var(--ease)}
+.detail-col:last-child{border-right:none}
+.detail-col.dimmed{opacity:.28;filter:grayscale(.7);pointer-events:none}
+.detail-col.focused{opacity:1;filter:none}
+.connector{width:2px;height:14px;margin:0 auto 10px;border-radius:var(--r-full)}
+.detail-col.pi-0 .connector{background:var(--s0-fg)}
+.detail-col.pi-1 .connector{background:var(--s1-fg)}
+.detail-col.pi-2 .connector{background:var(--s2-fg)}
+.detail-col.pi-3 .connector{background:var(--s3-fg)}
+.detail-col.pi-4 .connector{background:var(--s4-fg)}
+.detail-col.pi-5 .connector{background:var(--s5-fg)}
+.detail-col.pi-6 .connector{background:var(--s6-fg)}
+.detail-col.pi-7 .connector{background:var(--s7-fg)}
+
+/* ── DETAIL CARD ── */
+.s-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;box-shadow:var(--shadow-sm)}
+.detail-col.focused .s-card{box-shadow:var(--shadow-md)}
+.detail-col.pi-0.focused .s-card{border-color:var(--s0-fg)}
+.detail-col.pi-1.focused .s-card{border-color:var(--s1-fg)}
+.detail-col.pi-2.focused .s-card{border-color:var(--s2-fg)}
+.detail-col.pi-3.focused .s-card{border-color:var(--s3-fg)}
+.detail-col.pi-4.focused .s-card{border-color:var(--s4-fg)}
+.detail-col.pi-5.focused .s-card{border-color:var(--s5-fg)}
+.detail-col.pi-6.focused .s-card{border-color:var(--s6-fg)}
+.detail-col.pi-7.focused .s-card{border-color:var(--s7-fg)}
+
+/* card header — just the meta line (no badge, no status/done label) */
+.s-head{padding:10px 14px;border-bottom:1px solid var(--divider)}
+.s-meta{font-size:12px;color:var(--text-muted);font-family:var(--mono)}
+
+/* milestone list */
+.s-body{padding:6px 10px 10px;max-height:420px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.s-body::-webkit-scrollbar{width:4px}
+.s-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:var(--r-full)}
+.s-empty{padding:16px 4px;color:var(--text-faint);font-size:13px;text-align:center}
+
+/* milestone row — clickable */
+.m-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 6px;border-radius:var(--r-lg);
+  cursor:pointer;
+  transition:background var(--ease);
+  border-bottom:1px solid var(--divider);
+}
+.m-row:last-child{border-bottom:none}
+.m-row:hover{background:var(--surface-off)}
+.m-dot{width:7px;height:7px;border-radius:var(--r-full);flex-shrink:0}
+.detail-col.pi-0 .m-dot{background:var(--s0-fg)}
+.detail-col.pi-1 .m-dot{background:var(--s1-fg)}
+.detail-col.pi-2 .m-dot{background:var(--s2-fg)}
+.detail-col.pi-3 .m-dot{background:var(--s3-fg)}
+.detail-col.pi-4 .m-dot{background:var(--s4-fg)}
+.detail-col.pi-5 .m-dot{background:var(--s5-fg)}
+.detail-col.pi-6 .m-dot{background:var(--s6-fg)}
+.detail-col.pi-7 .m-dot{background:var(--s7-fg)}
+.m-name{font-size:13px;font-weight:600;color:var(--text);flex:1;line-height:1.35}
+.m-cnt{font-size:11px;color:var(--text-faint);font-family:var(--mono);white-space:nowrap}
+.m-arrow{color:var(--text-faint);flex-shrink:0;transition:color var(--ease)}
+.m-row:hover .m-arrow{color:var(--text-muted)}
+
+/* ── LOG POPUP (modal) ── */
+.popup-overlay{
+  position:fixed;inset:0;z-index:500;
+  background:oklch(0.1 0.01 80 / .55);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+  opacity:0;pointer-events:none;
+  transition:opacity .22s;
+}
+.popup-overlay.open{opacity:1;pointer-events:all}
+.popup-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-2xl);
+  box-shadow:var(--shadow-xl);
+  width:100%;max-width:540px;max-height:80dvh;
+  display:flex;flex-direction:column;
+  transform:translateY(12px) scale(.97);
+  transition:transform .28s cubic-bezier(0.16,1,0.3,1),opacity .22s;
+  opacity:0;
+}
+.popup-overlay.open .popup-box{transform:translateY(0) scale(1);opacity:1}
+.popup-header{
+  display:flex;align-items:center;gap:10px;
+  padding:16px 18px;border-bottom:1px solid var(--divider);flex-shrink:0;
+}
+.popup-dot{width:10px;height:10px;border-radius:var(--r-full);flex-shrink:0}
+.popup-title{font-size:15px;font-weight:700;flex:1;color:var(--text)}
+.popup-close{width:32px;height:32px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;color:var(--text-muted);flex-shrink:0}
+.popup-close:hover{background:var(--surface-off);color:var(--text)}
+.popup-count{font-size:12px;color:var(--text-muted);font-family:var(--mono);padding:0 18px 10px;flex-shrink:0;border-bottom:1px solid var(--divider)}
+.popup-body{flex:1;overflow-y:auto;padding:10px 18px 18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.popup-body::-webkit-scrollbar{width:5px}
+.popup-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:var(--r-full)}
+
+/* log items inside popup */
+.log-item{padding:11px 0;border-bottom:1px solid var(--divider);position:relative}
+.log-item:last-child{border-bottom:none}
+.log-date{font-size:12px;font-family:var(--mono);color:var(--text-muted);font-weight:500;margin-bottom:3px}
+.log-team{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--r-full);background:var(--surface-off);color:var(--text-muted);margin-bottom:5px}
+.log-content{font-size:14px;color:var(--text);line-height:1.75;white-space:pre-line}
+
+/* ── MISC ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;text-align:center;padding:80px 24px;gap:12px;color:var(--text-muted)}
+.empty-icon{width:52px;height:52px;color:var(--text-faint);margin-bottom:4px}
+.empty-title{font-size:16px;font-weight:600;color:var(--text)}
+.empty-desc{font-size:13px;max-width:300px;line-height:1.65}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:var(--bg);font-size:13px;font-weight:500;padding:10px 20px;border-radius:var(--r-full);box-shadow:var(--shadow-lg);opacity:0;transition:opacity .25s,transform .3s cubic-bezier(0.16,1,0.3,1);pointer-events:none;white-space:nowrap;z-index:999}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:900px){
+  .sidebar{display:none}
+  .content{padding:20px 16px 56px}
+  .pipeline,.detail-row{flex-direction:column}
+  .pipe-step{flex-direction:row;justify-content:flex-start;border-right:none;border-bottom:1px solid var(--border);padding:12px 14px}
+  .pipe-step:first-child{border-radius:var(--r-2xl) var(--r-2xl) 0 0}
+  .pipe-step:last-child{border-radius:0 0 var(--r-2xl) var(--r-2xl)}
+  .pipe-name{text-align:left}
+  .current-badge{bottom:auto;top:50%;left:auto;right:12px;transform:translateY(-50%)}
+  .current-badge::after{display:none}
+  .detail-col{border-right:none;border-bottom:1px solid var(--divider);padding:12px 0}
+  .detail-col.dimmed{display:none}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-label="Logo">
+        <path d="M12 3L3 8.5V15.5L12 21L21 15.5V8.5L12 3Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M12 3V21M3 8.5L21 15.5M21 8.5L3 15.5" stroke="white" stroke-width="1.2" stroke-opacity="0.5"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title" id="headerTitle">계약 프로세스 트래커</div>
+      <div class="header-sub" id="headerSub">엑셀 파일을 업로드하세요</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="reloadBtn" style="display:none" aria-label="파일 재업로드">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/>
+      </svg>
+    </button>
+    <button class="icon-btn" data-theme-toggle aria-label="테마 전환">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<div id="uploadScreen">
+  <div class="upload-card" id="dropZone">
+    <div class="upload-icon">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="upload-title">엑셀 파일 업로드</div>
+    <div class="upload-desc">.xlsx 파일을 드래그하거나 버튼을 눌러 선택하세요.</div>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">파일 선택</button>
+  </div>
+  <div class="upload-spec">
+    <strong>필수 컬럼 구조 (헤더 자동 감지)</strong>
+    <code>계약명 | Status | Team | Milestone | 일자 | Log</code><br><br>
+    <strong>다중 계약:</strong> 계약명이 다르면 별도 계약으로 분류 &nbsp;|&nbsp; <strong>다중 시트:</strong> 자동 통합
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx,.xls">
+</div>
+
+<div id="appScreen">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span>계약 목록</span>
+        <span class="ccount" id="contractCount">0</span>
+      </div>
+      <div class="sidebar-list" id="sidebarList"></div>
+      <button class="sidebar-up-btn" onclick="document.getElementById('fileInput').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        </svg>
+        파일 재업로드
+      </button>
+    </aside>
+    <main class="content" id="contentArea">
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <div class="empty-title">좌측에서 계약을 선택하세요</div>
+        <div class="empty-desc">계약을 클릭하면 프로세스 상세가 표시됩니다.</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- LOG POPUP -->
+<div class="popup-overlay" id="popupOverlay" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
+  <div class="popup-box" id="popupBox">
+    <div class="popup-header">
+      <div class="popup-dot" id="popupDot"></div>
+      <div class="popup-title" id="popupTitle"></div>
+      <button class="popup-close" id="popupClose" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="popup-count" id="popupCount"></div>
+    <div class="popup-body" id="popupBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CONFIG={
+  HEADER_ROW:1,
+  COL_MAP:{'계약명':'contract','Status':'status','Team':'team','Milestone':'milestone','일자':'date','Log':'log'},
+  KNOWN_STATUS_ORDER:['인입','권리자 소통','가치평가','협의','계약 체결','BM 자산화'],
+};
+
+// ── THEME ──
+(function(){
+  const btn=document.querySelector('[data-theme-toggle]'),root=document.documentElement;
+  let mode=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  root.setAttribute('data-theme',mode);
+  const sun=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+  const moon=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+  if(btn){btn.innerHTML=mode==='dark'?sun:moon;btn.addEventListener('click',()=>{mode=mode==='dark'?'light':'dark';root.setAttribute('data-theme',mode);btn.innerHTML=mode==='dark'?sun:moon;});}
+})();
+
+// ── TOAST ──
+function showToast(m,d=2800){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
+
+// ── POPUP ──
+const popupOverlay=document.getElementById('popupOverlay');
+const popupClose=document.getElementById('popupClose');
+function openPopup(milestoneName, logs, colorVar){
+  document.getElementById('popupTitle').textContent=milestoneName;
+  document.getElementById('popupDot').style.background=colorVar;
+  document.getElementById('popupCount').textContent=`${logs.length}개 로그`;
+  const body=document.getElementById('popupBody');
+  body.innerHTML='';
+  logs.forEach(log=>{
+    const item=document.createElement('div');item.className='log-item';
+    item.innerHTML=`
+      <div class="log-date">${escHtml(log.date||'일자 미기재')}</div>
+      ${log.team?`<span class="log-team">${escHtml(log.team)}</span>`:''}
+      <div class="log-content">${escHtml(log.log)}</div>`;
+    body.appendChild(item);
+  });
+  popupOverlay.classList.add('open');
+}
+function closePopup(){popupOverlay.classList.remove('open');}
+popupClose.addEventListener('click',closePopup);
+popupOverlay.addEventListener('click',e=>{if(e.target===popupOverlay)closePopup();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePopup();});
+
+// ── FILE HANDLING ──
+const fileInput=document.getElementById('fileInput');
+const dropZone=document.getElementById('dropZone');
+fileInput.addEventListener('change',e=>{if(e.target.files[0])processFile(e.target.files[0]);fileInput.value='';});
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)processFile(f);});
+document.getElementById('reloadBtn').addEventListener('click',()=>fileInput.click());
+
+function processFile(file){
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const allRows=[];
+      wb.SheetNames.forEach(sn=>{const ws=wb.Sheets[sn];const raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'yyyy-mm-dd'});allRows.push(...parseSheet(raw));});
+      if(!allRows.length){showToast('⚠️ 유효한 데이터를 찾을 수 없습니다.');return;}
+      const contracts=buildContracts(allRows);
+      renderApp(contracts,file.name);
+      showToast(`✅ ${file.name} 로드 완료 — ${contracts.length}개 계약`);
+    }catch(err){console.error(err);showToast('❌ 파싱 오류: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── PARSE ──
+function normalizeDate(d){if(!d)return'';if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;const m=d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);if(m){let[,mo,dy,yr]=m;if(yr.length===2)yr='20'+yr;return`${yr}-${mo.padStart(2,'0')}-${dy.padStart(2,'0')}`;}return d;}
+function parseSheet(raw){
+  let hi=CONFIG.HEADER_ROW;
+  const reqKeys=Object.keys(CONFIG.COL_MAP);
+  for(let i=0;i<Math.min(raw.length,5);i++){const row=(raw[i]||[]).map(c=>String(c||'').trim());if(reqKeys.every(k=>row.includes(k))){hi=i;break;}}
+  const headers=(raw[hi]||[]).map(c=>String(c||'').trim());
+  const ci={};Object.entries(CONFIG.COL_MAP).forEach(([xk,ik])=>{const idx=headers.indexOf(xk);if(idx!==-1)ci[ik]=idx;});
+  const rows=[];
+  for(let i=hi+1;i<raw.length;i++){
+    const r=raw[i];if(!r||!r.some(c=>c!==null&&c!==undefined&&c!==''))continue;
+    const get=k=>ci[k]!==undefined?String(r[ci[k]]||'').trim():'';
+    const contract=get('contract'),status=get('status');
+    if(!contract||!status||status==='Status')continue;
+    rows.push({contract,status,team:get('team'),milestone:get('milestone'),date:normalizeDate(get('date')),log:get('log')});
+  }
+  return rows;
+}
+function buildContracts(rows){
+  const map={};rows.forEach(r=>{if(!map[r.contract])map[r.contract]=[];map[r.contract].push(r);});
+  return Object.entries(map).map(([name,cRows])=>{
+    const statusOrder=[...CONFIG.KNOWN_STATUS_ORDER];
+    cRows.forEach(r=>{if(!statusOrder.includes(r.status))statusOrder.push(r.status);});
+    let currentStatus=statusOrder[0];
+    for(const s of statusOrder){if(cRows.some(r=>r.status===s))currentStatus=s;}
+    // BM 자산화에 '완료' 로그가 있으면 계약 완료로 처리
+    const bmRows=cRows.filter(r=>r.status==='BM 자산화');
+    const bmDone=bmRows.some(r=>r.log&&r.log.includes('완료'));
+    const isContractDone=bmDone;
+    const byStatus={};statusOrder.forEach(s=>{byStatus[s]={};});
+    cRows.forEach(r=>{if(!byStatus[r.status])byStatus[r.status]={};if(!byStatus[r.status][r.milestone])byStatus[r.status][r.milestone]=[];byStatus[r.status][r.milestone].push(r);});
+    Object.values(byStatus).forEach(ms=>Object.values(ms).forEach(logs=>logs.sort((a,b)=>(a.date||'').localeCompare(b.date||''))));
+    const dates=cRows.map(r=>r.date).filter(Boolean).sort();
+    const milestoneSet=new Set(cRows.map(r=>r.milestone).filter(Boolean));
+    return{name,statusOrder,currentStatus,byStatus,latestDate:dates[dates.length-1]||'',totalLogs:cRows.length,totalMilestones:milestoneSet.size,isContractDone};
+  });
+}
+
+// ── STATE ──
+let STATE={contracts:[],activeIdx:0};
+
+function renderApp(contracts,filename){
+  STATE.contracts=contracts;STATE.activeIdx=0;
+  document.getElementById('uploadScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  document.getElementById('reloadBtn').style.display='flex';
+  document.getElementById('headerSub').textContent=filename;
+  renderSidebar();renderContractDetail(0);
+}
+function renderSidebar(){
+  const list=document.getElementById('sidebarList');
+  document.getElementById('contractCount').textContent=STATE.contracts.length;
+  list.innerHTML='';
+  STATE.contracts.forEach((c,i)=>{
+    const item=document.createElement('div');item.className='contract-item'+(i===STATE.activeIdx?' active':'');
+    item.innerHTML=`<div class="c-dot"></div><div class="c-info"><div class="c-name" title="${escHtml(c.name)}">${escHtml(c.name)}</div><div class="c-meta">${escHtml(c.currentStatus)} · ${c.totalLogs}개 로그</div></div>`;
+    item.addEventListener('click',()=>{STATE.activeIdx=i;document.querySelectorAll('.contract-item').forEach((el,j)=>el.classList.toggle('active',j===i));renderContractDetail(i);});
+    list.appendChild(item);
+  });
+}
+
+function renderContractDetail(idx){
+  const c=STATE.contracts[idx];
+  const area=document.getElementById('contentArea');
+  area.innerHTML='';
+  const currentIdx=c.statusOrder.indexOf(c.currentStatus);
+
+  // get resolved CSS var value for a status index
+  function getColor(i){
+    const dummy=document.createElement('div');dummy.style.cssText='position:absolute;width:1px;height:1px;left:-999px';
+    dummy.style.background=`var(--s${Math.min(i,7)}-fg)`;
+    document.body.appendChild(dummy);
+    const color=getComputedStyle(dummy).background;
+    document.body.removeChild(dummy);
+    return color;
+  }
+
+  // Contract header
+  const ci=Math.min(currentIdx,7);
+  const hdr=document.createElement('div');hdr.className='contract-header';
+  hdr.innerHTML=`
+    <div class="contract-title">${escHtml(c.name)}</div>
+    <div class="contract-meta-row" style="margin-top:10px;flex-direction:column;align-items:flex-start;gap:5px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="contract-tag" style="background:var(--s${ci}-hl);color:var(--s${ci}-fg);font-size:13px;padding:4px 13px">${c.isContractDone?'현재: 계약완료':'현재: '+escHtml(c.currentStatus)}</span>
+        <span style="font-size:13px;color:var(--text-muted)">총 <strong style="color:var(--text)">${c.totalMilestones}</strong>개 마일스톤,&nbsp; 총 <strong style="color:var(--text)">${c.totalLogs}</strong>개 로그</span>
+      </div>
+      ${c.latestDate?`<div style="font-size:13px;color:var(--text-muted)">마지막 로그: <span style="font-family:var(--mono);color:var(--text)">${c.latestDate}</span></div>`:''}
+    </div>`;
+  area.appendChild(hdr);
+
+  // Pipeline
+  const pipeWrap=document.createElement('div');pipeWrap.className='pipeline-wrap';
+  pipeWrap.innerHTML=`<div class="section-label" style="font-size:13px;letter-spacing:.05em;margin-bottom:16px">전체 프로세스</div>`;
+  const pipe=document.createElement('div');pipe.className='pipeline';
+
+  const detailSection=document.createElement('div');detailSection.className='detail-section hidden';
+  const detailRow=document.createElement('div');detailRow.className='detail-row';
+  const detailCols=[];
+
+  c.statusOrder.forEach((status,i)=>{
+    const milestones=c.byStatus[status]||{};
+    const logCount=Object.values(milestones).flat().length;
+    const milestoneCount=Object.keys(milestones).filter(k=>k).length;
+    const isDone=(c.isContractDone?i<=currentIdx:i<currentIdx)&&!(c.isContractDone&&i===currentIdx&&false);const isCurrent=c.isContractDone?false:(i===currentIdx);
+    const pi=`pi-${Math.min(i,7)}`;
+
+    // ── Pipe step ──
+    const step=document.createElement('div');
+    step.className=`pipe-step ${pi}${isDone?' done':''}${isCurrent?' current':''}`;
+    step.innerHTML=`
+      ${isCurrent?'<span class="current-badge">현재 진행 중</span>':''}
+      <div class="pipe-num">${isDone?'✓':i+1}</div>
+      <div class="pipe-name">${escHtml(status)}</div>`;
+    step.addEventListener('click',()=>handleStepClick(i,detailSection,detailCols,step,pipe));
+    pipe.appendChild(step);
+
+    // ── Detail column ──
+    const col=document.createElement('div');col.className=`detail-col ${pi}`;
+
+    const metaText=milestoneCount>0?`${milestoneCount}개 마일스톤 · ${logCount}개 로그`:'로그 없음';
+    let bodyHTML='';
+    if(milestoneCount>0){
+      Object.entries(milestones).filter(([k])=>k).forEach(([mName,logs])=>{
+        bodyHTML+=`<div class="m-row" data-milestone="${escHtml(mName)}" data-pi="${Math.min(i,7)}">
+          <div class="m-dot"></div>
+          <div class="m-name">${escHtml(mName)}</div>
+          <div class="m-cnt">${logs.length}개</div>
+          <svg class="m-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>`;
+      });
+    } else {
+      bodyHTML=`<div class="s-empty">활동 내역 없음</div>`;
+    }
+
+    col.innerHTML=`
+      <div class="connector"></div>
+      <div class="s-card">
+        <div class="s-head"><div class="s-meta">${metaText}</div></div>
+        <div class="s-body">${bodyHTML}</div>
+      </div>`;
+
+    // attach click on milestone rows to open popup
+    col.querySelectorAll('.m-row').forEach(mrow=>{
+      const mName=mrow.dataset.milestone;
+      const piIdx=parseInt(mrow.dataset.pi);
+      const mLogs=milestones[mName]||[];
+      const colorVal=`var(--s${piIdx}-fg)`;
+      mrow.addEventListener('click',()=>openPopup(mName,mLogs,`var(--s${piIdx}-fg)`));
+    });
+
+    detailRow.appendChild(col);
+    detailCols.push(col);
+  });
+
+  pipeWrap.appendChild(pipe);
+  detailSection.appendChild(detailRow);
+  area.appendChild(pipeWrap);
+  area.appendChild(detailSection);
+}
+
+function handleStepClick(clickedIdx,detailSection,detailCols,clickedStep,pipe){
+  const allSteps=Array.from(pipe.querySelectorAll('.pipe-step'));
+  const wasSelected=clickedStep.classList.contains('selected');
+  allSteps.forEach(s=>s.classList.remove('selected'));
+  if(wasSelected){detailSection.classList.add('hidden');return;}
+  clickedStep.classList.add('selected');
+  detailSection.classList.remove('hidden');
+  detailCols.forEach((col,i)=>{
+    col.classList.remove('focused','dimmed');
+    col.classList.add(i===clickedIdx?'focused':'dimmed');
+  });
+  detailSection.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+</html>
