@@ -36,6 +36,7 @@
     <div class="row">
       <button id="runBtn">실행</button>
       <button id="tokenOnlyBtn" style="background:#666;border-color:#666;">토큰만 확인</button>
+      <button id="sdkProbeBtn" style="background:#8a4b00;border-color:#8a4b00;">SDK 진단만</button>
       <span class="muted">/#/site/… 형식도 입력 가능 (자동 정규화됨)</span>
     </div>
   </div>
@@ -107,21 +108,112 @@
       return { status: res.status, ok: res.ok, body, elapsed };
     }
 
-    async function checkSdkReachability() {
-      const urls = [
-        'https://embedding.tableauusercontent.com/tableau.embedding.3.latest.min.js',
-        'https://prod-kr-a.online.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js',
-      ];
-      for (const u of urls) {
-        try {
-          const t0 = performance.now();
-          const r = await fetch(u, { method: 'GET', mode: 'no-cors' });
-          log('SDK reachable: ' + u.split('/').pop().slice(0, 40) + ' @ ' + u.split('/')[2] + ' (' + Math.round(performance.now() - t0) + 'ms)', 'ok');
-        } catch (e) {
-          log('SDK 도달 불가: ' + u + ' — ' + e.message, 'err');
+    const SDK_URLS = [
+      'https://embedding.tableauusercontent.com/tableau.embedding.3.latest.min.js',
+      'https://prod-kr-a.online.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js',
+      'https://prod-apnortheast-a.online.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js',
+    ];
+
+    function probeUrlXhr(url) {
+      return new Promise((resolve) => {
+        const t0 = performance.now();
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.timeout = 8000;
+        xhr.onload = () => resolve({
+          url, ok: xhr.status >= 200 && xhr.status < 400,
+          status: xhr.status,
+          bytes: (xhr.responseText || '').length,
+          snippet: (xhr.responseText || '').slice(0, 80).replace(/\s+/g, ' '),
+          elapsed: Math.round(performance.now() - t0),
+        });
+        xhr.onerror = () => resolve({ url, ok: false, status: 0, error: 'network/CORS', elapsed: Math.round(performance.now() - t0) });
+        xhr.ontimeout = () => resolve({ url, ok: false, status: 0, error: 'timeout', elapsed: Math.round(performance.now() - t0) });
+        try { xhr.send(); } catch (e) { resolve({ url, ok: false, status: 0, error: e.message }); }
+      });
+    }
+
+    async function probeAllSdkUrls() {
+      log('── SDK CDN 도달 가능성 점검 시작 ──');
+      const results = [];
+      for (const u of SDK_URLS) {
+        const r = await probeUrlXhr(u);
+        results.push(r);
+        const host = new URL(u).host;
+        if (r.ok) {
+          log(`✓ ${host} — HTTP ${r.status}, ${r.bytes}바이트, ${r.elapsed}ms`, 'ok');
+          log(`  시작: ${r.snippet}`);
+        } else {
+          log(`✗ ${host} — ${r.error || ('HTTP ' + r.status)} (${r.elapsed}ms)`, 'err');
+        }
+      }
+      return results;
+    }
+
+    async function injectSdkAndCheck(url) {
+      log('→ 수동 주입 시도: ' + url);
+      return new Promise((resolve) => {
+        // 기존 스크립트 제거
+        document.querySelectorAll('script[data-manual-sdk]').forEach(s => s.remove());
+        const s = document.createElement('script');
+        s.type = 'module';
+        s.src = url;
+        s.setAttribute('data-manual-sdk', '1');
+        let settled = false;
+        s.onload = () => {
+          setTimeout(() => {
+            const ok = !!customElements.get('tableau-viz');
+            if (!settled) {
+              settled = true;
+              log(`  load 이벤트 후 customElements.get('tableau-viz') = ${ok}`, ok ? 'ok' : 'err');
+              resolve(ok);
+            }
+          }, 400);
+        };
+        s.onerror = (e) => {
+          if (!settled) {
+            settled = true;
+            log(`  onerror 발생: ${e && e.message || '알 수 없음'}`, 'err');
+            resolve(false);
+          }
+        };
+        document.head.appendChild(s);
+        setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            log('  10초 후에도 load 이벤트 없음', 'err');
+            resolve(false);
+          }
+        }, 10000);
+      });
+    }
+
+    async function runSdkProbe() {
+      document.getElementById('eventLog').innerHTML = '';
+      log('현재 customElements.get("tableau-viz") = ' + !!customElements.get('tableau-viz'));
+      const results = await probeAllSdkUrls();
+      const firstOk = results.find(r => r.ok);
+      if (!firstOk) {
+        log('어떤 CDN에서도 SDK를 받아올 수 없습니다. 네트워크/방화벽 확인 필요.', 'err');
+        return;
+      }
+      if (customElements.get('tableau-viz')) {
+        log('이미 등록됨 — 재주입 불필요', 'ok');
+        return;
+      }
+      log('─ 수동 주입 테스트 (동작하는 URL부터 차례로) ─');
+      for (const r of results.filter(x => x.ok)) {
+        const registered = await injectSdkAndCheck(r.url);
+        if (registered) {
+          log('✅ 이 URL로 등록 성공: ' + r.url, 'ok');
+          log('→ index.html의 <script src=…>를 이 URL로 교체하세요.', 'ok');
+          break;
         }
       }
     }
+
+    // 호환성: 기존 runFull이 부르는 이름 유지
+    async function checkSdkReachability() { await probeAllSdkUrls(); }
 
     async function runTokenOnly() {
       document.getElementById('tokenOut').textContent = '요청 중…';
@@ -245,6 +337,7 @@
 
     document.getElementById('runBtn').addEventListener('click', runFull);
     document.getElementById('tokenOnlyBtn').addEventListener('click', runTokenOnly);
+    document.getElementById('sdkProbeBtn').addEventListener('click', runSdkProbe);
     // 기본값 프리필
     document.getElementById('url').value = 'https://prod-kr-a.online.tableau.com/#/site/beyondmusic/views/_17707711277260/sheet0_1?:iid=1';
   </script>
