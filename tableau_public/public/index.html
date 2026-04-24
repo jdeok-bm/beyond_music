@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- Tableau Embedding API v3 -->
-  <script type="module" src="https://embedding.tableauusercontent.com/tableau.embedding.3.latest.min.js"></script>
+  <!-- embedding.tableauusercontent.com 이 KR에서 403 차단되는 환경이 있어, 사이트 자체 CDN을 사용합니다 -->
+  <script type="module" src="https://prod-kr-a.online.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js"></script>
   <style>
     /* ─── Design Tokens ─── */
     :root, [data-theme="light"] {
@@ -754,7 +755,7 @@
               <div class="step-content">
                 <div class="step-title">Tableau Embedding API v3 라이브러리 로드</div>
                 <div class="step-desc">HTML &lt;head&gt;에 script 태그 추가 (CDN)</div>
-                <div class="step-code">&lt;script type="module" src="https://embedding.tableauusercontent.com/tableau.embedding.3.latest.min.js"&gt;&lt;/script&gt;</div>
+                <div class="step-code">&lt;script type="module" src="https://prod-kr-a.online.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js"&gt;&lt;/script&gt;</div>
               </div>
             </div>
             <div class="guide-step">
