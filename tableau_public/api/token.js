@@ -35,20 +35,25 @@ module.exports = function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return res.status(405).json({ error: 'Method Not Allowed', method: req.method });
   }
 
   // 환경변수 체크
   const missing = getMissingEnvVars();
   if (missing.length > 0) {
-    console.error('Missing env vars:', missing);
-    return res.status(500).json({ error: 'Server misconfiguration', missing });
+    console.error('[token] Missing env vars:', missing);
+    return res.status(500).json({
+      error: 'Server misconfiguration',
+      message: 'Vercel 대시보드에서 환경변수를 등록한 뒤 Redeploy 하세요.',
+      missing,
+    });
   }
 
   try {
@@ -71,6 +76,8 @@ module.exports = function handler(req, res) {
 
     const payload = {
       iss: TABLEAU_CLIENT_ID,
+      iat: now,
+      nbf: now - 5,
       exp: now + 300,
       jti: crypto.randomUUID(),
       aud: 'tableau',
@@ -83,10 +90,13 @@ module.exports = function handler(req, res) {
     }
 
     const token = signJWT(header, payload, TABLEAU_SECRET_VALUE);
-    return res.status(200).json({ token });
+    return res.status(200).json({ token, expiresIn: 300 });
 
   } catch (err) {
-    console.error('JWT generation error:', err);
-    return res.status(500).json({ error: 'Failed to generate token' });
+    console.error('[token] JWT generation error:', err);
+    return res.status(500).json({
+      error: 'Failed to generate token',
+      message: err && err.message ? err.message : String(err),
+    });
   }
 };

@@ -845,14 +845,30 @@ const _jwt = {
     if (this.pending) return this.pending;
     this.pending = (async () => {
       try {
-        const res = await fetch('/api/token', { method: 'POST' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const { token } = await res.json();
-        this.value = token;
-        this.expiresAt = Date.now() + 5 * 60 * 1000;
-        return token;
+        const res = await fetch('/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const bodyText = await res.text();
+        let body = null;
+        try { body = JSON.parse(bodyText); } catch { /* non-JSON */ }
+        if (!res.ok) {
+          const err = new Error('HTTP ' + res.status);
+          err.status = res.status;
+          err.body = body || bodyText;
+          throw err;
+        }
+        if (!body || !body.token) {
+          const err = new Error('토큰 형식 오류');
+          err.status = res.status;
+          err.body = body || bodyText;
+          throw err;
+        }
+        this.value = body.token;
+        this.expiresAt = Date.now() + (body.expiresIn ? body.expiresIn * 1000 : 5 * 60 * 1000);
+        return this.value;
       } catch (err) {
-        console.error('[JWT] 토큰 발급 실패:', err);
+        console.error('[JWT] 토큰 발급 실패:', err, err.body);
         this.value = null;
         throw err;
       } finally {
@@ -863,63 +879,37 @@ const _jwt = {
   }
 };
 
+function _escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+}
+
 async function injectToken(vizId) {
-  // vizId = "viz-{dashId}"
-  const dashId = vizId.replace('viz-', '');
-  const slot   = document.getElementById('viz-slot-' + dashId);
-  const loader = document.getElementById('loading-' + dashId);
-  if (!slot) return;
-
-  // 이미 주입된 경우 스킵
-  if (slot.querySelector('tableau-viz')) return;
-
+  const viz = document.getElementById(vizId);
+  if (!viz) return;
   try {
     const token = await _jwt.fetch();
-
-    const d = dashboards.find(x => x.id === dashId);
-    if (!d) return;
-
-    // 문제 1 수정: 해시 URL → /t/SITENAME/views/... 형식으로 정규화
-    const cleanSrc = normalizeTableauUrl(d.url);
-
-    // 문제 2 수정: 토큰 확보 후 <tableau-viz>를 동적 생성·삽입
-    const viz = document.createElement('tableau-viz');
-    viz.id = vizId;
-    viz.setAttribute('src',       cleanSrc);
-    viz.setAttribute('width',     '100%');
-    viz.setAttribute('height',    String(d.height));
-    viz.setAttribute('hide-tabs', '');
-    viz.setAttribute('toolbar',   'hidden');
-    viz.setAttribute('token',     token);
-    viz.style.cssText = 'display:block;width:100%;';
-
-    viz.addEventListener('firstinteractive', () => loader && loader.classList.add('hidden'));
-    viz.addEventListener('vizloaderror', () => {
-      if (loader) loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">⚠️ 대시보드 로딩 실패. URL 및 권한을 확인하세요.</div>';
-    });
-
-    slot.appendChild(viz);
-
-    // 타임아웃 안전망
-    setTimeout(() => {
-      if (loader && !loader.classList.contains('hidden') && !loader.innerHTML.includes('⚠️')) {
-        loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">⚠️ 응답 시간 초과. 네트워크 또는 URL을 확인하세요.</div>';
-      }
-    }, 25000);
-
-  } catch {
+    viz.setAttribute('token', token);
+  } catch (err) {
+    const loader = document.getElementById(vizId.replace('viz-', 'loading-'));
     if (loader) {
-      loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">⚠️ 인증 토큰을 가져오지 못했습니다.<br><button onclick="retryEmbed(\'' + vizId + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
+      const status = err && err.status ? ('HTTP ' + err.status) : (err && err.message) || '네트워크 오류';
+      let detail = '';
+      if (err && err.body && typeof err.body === 'object') {
+        if (err.body.message) detail = err.body.message;
+        if (Array.isArray(err.body.missing) && err.body.missing.length) {
+          detail += (detail ? ' — ' : '') + '누락 변수: ' + err.body.missing.join(', ');
+        }
+      } else if (err && err.body) {
+        detail = String(err.body).slice(0, 160);
+      }
+      loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 인증 토큰을 가져오지 못했습니다.<br><span style="opacity:.85;">' + _escapeHtml(status) + (detail ? ' · ' + _escapeHtml(detail) : '') + '</span><br><a href="/api/diag" target="_blank" style="color:var(--color-error);text-decoration:underline;margin-top:4px;display:inline-block;font-size:11px;">환경변수 진단 열기</a><br><button onclick="retryEmbed(\'' + vizId + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
     }
   }
 }
+
 async function retryEmbed(vizId) {
   _jwt.value = null;
-  const dashId = vizId.replace('viz-', '');
-  const slot   = document.getElementById('viz-slot-' + dashId);
-  const loader = document.getElementById('loading-' + dashId);
-  // 기존 viz-slot 초기화 → injectToken이 재주입 가능하도록
-  if (slot) slot.innerHTML = '';
+  const loader = document.getElementById(vizId.replace('viz-', 'loading-'));
   if (loader) {
     loader.innerHTML = '<div class="loading-spinner"></div><div class="loading-text">대시보드를 불러오는 중...</div>';
     loader.classList.remove('hidden');
@@ -1058,34 +1048,31 @@ function renderDashboardViews() {
     </section>
   `).join('');
 
-  // JWT 토큰 취득 후 <tableau-viz> 동적 주입 (이벤트 바인딩도 injectToken이 처리)
+  // Viz 로드 이벤트 바인딩 + JWT 토큰 주입
+  // Tableau Cloud 대시보드: /api/token 에서 JWT를 받아와 token 속성에 주입합니다.
   dashboards.forEach(d => {
     if (d.url && !isPublicUrl(d.url)) {
-      injectToken('viz-' + d.id);
+      const viz = document.getElementById('viz-' + d.id);
+      const loader = document.getElementById('loading-' + d.id);
+      if (viz && loader) {
+        const hideLoader = () => loader.classList.add('hidden');
+        const showError = (msg) => {
+          loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">' + (msg || '⚠️ 대시보드를 불러올 수 없습니다.') + '</div>';
+        };
+        if (viz.workbook) { hideLoader(); return; }
+        viz.addEventListener('firstinteractive', hideLoader);
+        viz.addEventListener('vizloaderror', () => showError('⚠️ 대시보드 로딩 실패. URL 및 권한을 확인하세요.'));
+        // 타임아웃 안전망
+        setTimeout(() => {
+          if (!loader.classList.contains('hidden') && !loader.innerHTML.includes('⚠️')) {
+            loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 응답 시간 초과 (25초)<br><span style="opacity:.85;">대시보드 URL · Tableau 사이트 · Connected App 설정 확인</span><br><a href="/api/diag" target="_blank" style="color:var(--color-error);text-decoration:underline;margin-top:4px;display:inline-block;font-size:11px;">환경변수 진단 열기</a><br><button onclick="retryEmbed(\'viz-' + d.id + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
+          }
+        }, 25000);
+        // JWT 토큰 주입 (비동기) — token 속성이 설정되면 tableau-viz가 인증 재시도
+        injectToken('viz-' + d.id);
+      }
     }
   });
-}
-
-// ─── Tableau Cloud URL 정규화 ───
-// Embedding API v3는 해시(#) URL을 인식하지 못함.
-// https://site.online.tableau.com/#/site/SITENAME/views/WB/SHEET
-//   → https://site.online.tableau.com/t/SITENAME/views/WB/SHEET
-function normalizeTableauUrl(rawUrl) {
-  if (!rawUrl) return rawUrl;
-  try {
-    if (!rawUrl.includes('#')) return rawUrl;
-    const urlObj = new URL(rawUrl);
-    const hash = urlObj.hash; // e.g. "#/site/SITENAME/views/WB/SHEET"
-    if (!hash) return rawUrl;
-    let path = hash.slice(1); // remove leading #
-    if (path.startsWith('/site/')) {
-      // /site/SITENAME/views/... → /t/SITENAME/views/...
-      path = path.replace(/^\/site\//, '/t/');
-    }
-    return urlObj.origin + path;
-  } catch (e) {
-    return rawUrl;
-  }
 }
 
 // ─── URL 타입 감지 ───
@@ -1141,14 +1128,22 @@ function renderEmbed(d) {
         onerror="(function(el){el.innerHTML='<div style=\\'color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);\\'>⚠️ 대시보드를 불러올 수 없습니다. URL을 확인하세요.</div>';})(document.getElementById('loading-${d.id}'))">
       </iframe>`;
   } else {
-    // Tableau Cloud: 토큰 취득 후 <tableau-viz>를 동적으로 slot에 주입합니다.
-    // (토큰 없이 컴포넌트를 렌더링하면 인증 실패 → 빈 화면 또는 타임아웃)
+    // Tableau Cloud: JWT 토큰 주입 후 <tableau-viz> 웹 컴포넌트로 임베딩
+    // token 속성은 renderDashboardViews() 후 injectToken()이 비동기로 채워줍니다.
     return `
       <div class="tableau-loading" id="loading-${d.id}">
         <div class="loading-spinner"></div>
         <div class="loading-text">인증 중...</div>
       </div>
-      <div id="viz-slot-${d.id}" style="display:block;width:100%;"></div>`;
+      <tableau-viz
+        id="viz-${d.id}"
+        src="${d.url}"
+        width="100%"
+        height="${d.height}"
+        hide-tabs
+        toolbar="hidden"
+        style="display:block;width:100%;">
+      </tableau-viz>`;
   }
 }
 
