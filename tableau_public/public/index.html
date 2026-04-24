@@ -6,10 +6,16 @@
   <title>Analytics Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Tableau CDN/API 사전 연결 (TLS handshake 선행으로 로드 시간 단축) -->
+  <link rel="preconnect" href="https://prod-kr-a.online.tableau.com" crossorigin>
+  <link rel="dns-prefetch" href="https://prod-kr-a.online.tableau.com">
+  <!-- /dashboards.json 과 /api/token 은 동일 도메인이라 별도 preconnect 불필요 -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- Tableau Embedding API v3 -->
   <!-- embedding.tableauusercontent.com 이 KR에서 403 차단되는 환경이 있어, 사이트 자체 CDN을 사용합니다 -->
   <script type="module" src="https://prod-kr-a.online.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js"></script>
+  <!-- /dashboards.json 을 미리 가져와서 첫 렌더 지연 최소화 (/api/token 은 POST라 preload 불가하여 JS에서 warmup) -->
+  <link rel="preload" href="/dashboards.json" as="fetch">
   <style>
     /* ─── Design Tokens ─── */
     :root, [data-theme="light"] {
@@ -1545,31 +1551,86 @@ async function reloadFromServer() {
   }
 }
 
-// ─── Init ───
-// 1) 즉시 로컬스토리지 기반으로 1차 렌더 (체감 속도 확보)
-render();
-switchView(dashboards.length ? 'dashboard-0' : 'setup', null);
+// ─── Bootstrap 로딩 상태 표시 (첫 방문자 전용) ───
+// 로컬 데이터가 없어 '설정' 탭으로 튀어 보이는 현상을 막기 위해, 공용 설정이 도착할 때까지 중립 로딩 화면을 띄웁니다.
+function renderBootstrapLoading() {
+  // 스피너 애니메이션 스타일 주입 (중복 방지)
+  if (!document.getElementById('bootstrap-loading-style')) {
+    const st = document.createElement('style');
+    st.id = 'bootstrap-loading-style';
+    st.textContent = `
+      @keyframes tp-spin{to{transform:rotate(360deg)}}
+      #bootstrap-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:var(--space-4);color:var(--color-text-muted);}
+      #bootstrap-loading .sp{width:40px;height:40px;border:3px solid var(--color-border);border-top-color:var(--color-primary);border-radius:50%;animation:tp-spin 0.8s linear infinite;}
+    `;
+    document.head.appendChild(st);
+  }
+  // 기존 뷰 모두 숨김
+  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+  const body = document.querySelector('.page-body');
+  if (!body) return;
+  // 기존 로딩 요소 제거 후 재생성
+  const existing = document.getElementById('bootstrap-loading');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.id = 'bootstrap-loading';
+  div.innerHTML = `
+    <div class="sp"></div>
+    <div style="font-size:var(--text-sm);text-align:center;line-height:1.6;">
+      대시보드를 준비하고 있습니다<br>
+      <span style="font-size:var(--text-xs);opacity:.75;">잠시만 기다려 주세요…</span>
+    </div>
+  `;
+  body.appendChild(div);
+  const t = document.getElementById('breadcrumbTitle');
+  if (t) t.textContent = '대시보드';
+}
 
-// 2) 공용 설정(/dashboards.json)을 비동기로 가져와 필요 시 반영
+function removeBootstrapLoading() {
+  const el = document.getElementById('bootstrap-loading');
+  if (el) el.remove();
+}
+
+// ─── Init ───
+// 1) 첫 렌더
+//    - 로컬 데이터가 있으면 즉시 대시보드 탭 표시 (재방문자)
+//    - 로컬 데이터가 없으면 '설정' 탭이 아닌 중립 로딩 화면 표시 (첫 방문자 전용)
+if (_hadLocal) {
+  render();
+  switchView('dashboard-0', null);
+} else {
+  render();                    // 사이드바 nav 등 레이아웃만 먼저 그림
+  renderBootstrapLoading();    // page-body 중앙에 로딩 스피너
+}
+
+// 2) 공용 설정(/dashboards.json) + JWT 토큰을 병렬로 프리페치
+//    — 대시보드 뷰로 전환하기 전에 토큰이 이미 캐시에 올라가 있으면 첫 embed 가 훨씬 빨라집니다.
+_jwt.fetch().catch(err => console.warn('[bootstrap] token warmup failed:', err && err.message));
+
 (async function bootstrapSharedConfig() {
   const shared = await loadSharedConfig();
-  if (!shared || shared.length === 0) {
-    // 서버에도 없고 로컬에도 없으면 내장 기본값
+
+  // 공용 설정이 있으면 그걸 적용
+  if (shared && shared.length) {
     if (!_hadLocal) {
-      dashboards = getBuiltinDefaults();
+      dashboards = shared;
       saveToStorage();
+      removeBootstrapLoading();
       render();
-      switchView(dashboards.length ? 'dashboard-0' : 'setup', null);
+      switchView('dashboard-0', null);
     }
     return;
   }
+
+  // 공용 설정 없음
   if (!_hadLocal) {
-    // 첫 방문자: 공용 설정을 그대로 씀
-    dashboards = shared;
+    // 로컬도 없고 공용도 없음 — 내장 기본값(이름만 있는 placeholder) 사용
+    // URL 이 비어있으므로 이 경우에만 '설정' 탭을 열어 바로 추가하도록 유도
+    dashboards = getBuiltinDefaults();
     saveToStorage();
+    removeBootstrapLoading();
     render();
-    switchView(dashboards.length ? 'dashboard-0' : 'setup', null);
-    showToast('공용 대시보드 설정을 불러왔습니다');
+    switchView('setup', null);
   }
   // 로컬에 이미 커스터마이즈가 있으면 자동 덮어쓰지 않음
   // (설정 탭의 "서버 설정 불러오기" 버튼으로 수동 갱신 가능)
