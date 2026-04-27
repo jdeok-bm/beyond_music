@@ -20,6 +20,16 @@
       "refresh": "daily",
       "desc": "",
       "createdAt": "2026-04-24T05:36:48.749Z"
+    },
+    {
+      "id": "dash-1777256054511",
+      "name": "Deal List Overview",
+      "category": "Deal List",
+      "url": "https://prod-kr-a.online.tableau.com/#/site/beyondmusic/views/DealListOverview/DealListOverview?:iid=1",
+      "height": 1600,
+      "refresh": "daily",
+      "desc": "",
+      "createdAt": "2026-04-27T02:14:14.511Z"
     }
   ]
 }
