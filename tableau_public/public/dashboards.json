@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "categories": ["매출(인접권료)", "Deal List"],
+  "categories": ["매출(인접권료)", "Deal List", "마케팅"],
   "dashboards": [
     {
       "id": "dash-1777009008749",
@@ -31,6 +31,36 @@
       "refresh": "daily",
       "desc": "",
       "createdAt": "2026-04-27T02:14:14.511Z"
+    },
+    {
+      "id": "dash-1783382400000",
+      "name": "오리지널 콘텐츠 모니터링",
+      "category": "마케팅",
+      "url": "https://prod-kr-a.online.tableau.com/t/beyondmusic/views/_0/sheet1_1",
+      "height": 1600,
+      "refresh": "daily",
+      "desc": "",
+      "createdAt": "2026-07-07T00:00:00.000Z"
+    },
+    {
+      "id": "dash-1783382400001",
+      "name": "아티스트 음원별 매출 추이",
+      "category": "마케팅",
+      "url": "https://prod-kr-a.online.tableau.com/#/site/beyondmusic/workbooks/471403/views",
+      "height": 1600,
+      "refresh": "daily",
+      "desc": "⚠️ URL이 특정 시트가 아닌 워크북 목록 페이지 형식입니다. 관리자 페이지에서 실제 시트 공유 링크로 교체해주세요.",
+      "createdAt": "2026-07-07T00:00:00.000Z"
+    },
+    {
+      "id": "dash-1783382400002",
+      "name": "리메이크 음원별 매출 추이",
+      "category": "마케팅",
+      "url": "https://prod-kr-a.online.tableau.com/t/beyondmusic/views/_17833328558960/sheet0_1",
+      "height": 1600,
+      "refresh": "daily",
+      "desc": "",
+      "createdAt": "2026-07-07T00:00:00.000Z"
     }
   ]
 }
