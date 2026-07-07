@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BeyondMusic Dashboards</title>
+  <title>Beyond Music Dashboards</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Tableau CDN/API 사전 연결 (TLS handshake 선행으로 로드 시간 단축) -->
@@ -393,15 +393,14 @@
   <nav class="sidebar" id="sidebar" aria-label="주 메뉴">
     <div class="sidebar-header">
       <!-- SVG Logo -->
-      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-label="BeyondMusic Dashboards">
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-label="Beyond Music Dashboards">
         <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
         <rect x="8" y="18" width="4" height="7" rx="1" fill="white" opacity="0.9"/>
         <rect x="14" y="13" width="4" height="12" rx="1" fill="white"/>
         <rect x="20" y="7" width="4" height="18" rx="1" fill="white" opacity="0.75"/>
       </svg>
       <div>
-        <div class="logo-text">BeyondMusic Dashboards</div>
-        <div class="logo-sub">Beyond Music</div>
+        <div class="logo-text">Beyond Music Dashboards</div>
       </div>
     </div>
 
@@ -434,7 +433,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <div class="page-breadcrumb" id="pageBreadcrumb">
-        <span>BeyondMusic Dashboards</span>
+        <span>Beyond Music Dashboards</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         <strong id="breadcrumbTitle">대시보드</strong>
       </div>
@@ -579,7 +578,46 @@ async function retryEmbed(vizId) {
     loader.innerHTML = '<div class="loading-spinner"></div><div class="loading-text">인증 중...</div>';
     loader.classList.remove('hidden');
   }
-  await injectToken(vizId);
+  const ok = await injectToken(vizId);
+  if (ok) startWorkbookPoll(vizId);
+}
+
+// ─── 로드 완료 감지 폴링 ───
+// 현재 배포된 Embedding API 빌드는 firstinteractive 등의 DOM 이벤트를 발생시키지
+// 않아 (viz.workbook 은 정상 세팅됨) 이벤트만 기다리면 대시보드가 다 그려져도
+// 로더가 영원히 남습니다. workbook 프로퍼티를 직접 폴링해 로더를 숨깁니다.
+const _workbookPolls = new Map(); // vizId -> intervalId (중복 폴링 방지)
+function startWorkbookPoll(vizId) {
+  const prev = _workbookPolls.get(vizId);
+  if (prev) clearInterval(prev);
+
+  const pollStart = Date.now();
+  const poll = setInterval(() => {
+    const viz = document.getElementById(vizId);
+    const loader = document.getElementById(vizId.replace('viz-', 'loading-'));
+    // 재렌더링 등으로 요소가 사라졌거나, 이미 숨겨졌거나, 에러가 표시된 경우 종료
+    if (!viz || !loader || loader.classList.contains('hidden') || loader.innerHTML.includes('⚠️')) {
+      clearInterval(poll);
+      _workbookPolls.delete(vizId);
+      return;
+    }
+    let ready = false;
+    try { ready = !!viz.workbook; } catch { ready = false; }
+    if (ready) {
+      console.log(`[tableau-viz:${vizId}] workbook-ready(poll, hideLoader)`);
+      clearInterval(poll);
+      _workbookPolls.delete(vizId);
+      loader.classList.add('hidden');
+      return;
+    }
+    // 타임아웃 안전망 (60초 — 큰 대시보드는 25초로 부족)
+    if (Date.now() - pollStart > 60000) {
+      clearInterval(poll);
+      _workbookPolls.delete(vizId);
+      loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 응답 시간 초과 (60초)<br><span style="opacity:.85;">Tableau 서버 응답 지연 · 대시보드 크기 · 권한 확인</span><br><button onclick="retryEmbed(\'' + vizId + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
+    }
+  }, 500);
+  _workbookPolls.set(vizId, poll);
 }
 
 function saveToStorage() {
@@ -733,20 +771,36 @@ function renderDashboardViews() {
     return;
   }
 
+  // 임베드는 여기서 만들지 않습니다 — display:none 상태에서 초기화된 tableau-viz 는
+  // 크기를 0으로 캡처해 탭 전환 후에도 빈 화면으로 남는 문제가 있어, 각 대시보드가
+  // 처음 활성화될 때 mountEmbed()로 초기화합니다. (동시 로딩 부하도 줄어듭니다)
   container.innerHTML = dashboards.map((d, i) => `
     <section class="view-section ${currentView === 'dashboard-'+i ? 'active' : ''}" id="view-dashboard-${i}">
       <div class="embed-fill" id="wrapper-${d.id}">
-        ${d.url ? renderEmbed(d) : renderPlaceholder()}
+        ${d.url ? '' : renderPlaceholder()}
       </div>
     </section>
   `).join('');
 
-  // 각 wrapper 크기에 맞춰 임베드 높이를 채우고, 창 크기/사이드바 토글에도 자동으로 맞춥니다.
-  dashboards.forEach(d => {
-    if (!d.url) return;
-    const wrapper = document.getElementById('wrapper-' + d.id);
-    const embedEl = document.getElementById('viz-' + d.id);
-    if (!wrapper || !embedEl) return;
+  // 현재 활성 대시보드만 즉시 초기화
+  const activeIdx = parseInt(currentView.split('-')[1]);
+  if (!isNaN(activeIdx)) mountEmbed(activeIdx);
+}
+
+// ─── 임베드 지연 초기화 ───
+// 해당 대시보드 탭이 처음 활성화될 때 한 번만 tableau-viz/iframe 을 생성합니다.
+// 이미 초기화된 임베드는 탭을 오가도 그대로 유지됩니다.
+function mountEmbed(idx) {
+  const d = dashboards[idx];
+  if (!d || !d.url) return;
+  const wrapper = document.getElementById('wrapper-' + d.id);
+  if (!wrapper || wrapper.dataset.mounted) return;
+  wrapper.dataset.mounted = '1';
+  wrapper.innerHTML = renderEmbed(d);
+
+  // wrapper 크기에 맞춰 임베드 높이를 채우고, 창 크기/사이드바 토글에도 자동으로 맞춥니다.
+  const embedEl = document.getElementById('viz-' + d.id);
+  if (embedEl) {
     const apply = () => {
       const h = Math.max(300, Math.floor(wrapper.clientHeight));
       embedEl.setAttribute('height', String(h));
@@ -755,67 +809,59 @@ function renderDashboardViews() {
     const ro = new ResizeObserver(apply);
     ro.observe(wrapper);
     _resizeObservers.set(d.id, ro);
+  }
+
+  if (isPublicUrl(d.url)) return; // Public iframe 은 onload 로 로더가 숨겨집니다
+
+  // Tableau Cloud: 이벤트 바인딩 + JWT 토큰 주입
+  const viz = embedEl;
+  const loader = document.getElementById('loading-' + d.id);
+  if (!viz || !loader) return;
+
+  const t0 = performance.now();
+  const stamp = (label) => {
+    const dt = Math.round(performance.now() - t0);
+    console.log(`[tableau-viz:${d.id}] +${dt}ms ${label}`);
+  };
+  const setStage = (text, sub) => {
+    const textEl = loader.querySelector('.loading-text');
+    if (textEl) {
+      textEl.innerHTML = text + (sub
+        ? `<br><span style="display:block;margin-top:4px;font-size:10px;opacity:.7;">${sub}</span>`
+        : '');
+    }
+  };
+  const hideLoader = () => loader.classList.add('hidden');
+  const showError = (msg) => {
+    loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">' + (msg || '⚠️ 대시보드를 불러올 수 없습니다.') + '</div>';
+  };
+
+  // 전체 Tableau 이벤트를 콘솔에 기록 (디버깅용)
+  ['firstinteractive','firstvizsizeknown','workbookready','vizloaderror','tabswitched','editinprogress','error']
+    .forEach(evt => viz.addEventListener(evt, e => {
+      stamp(evt);
+      console.log('[tableau-viz:' + d.id + ']', evt, e && e.detail);
+    }));
+
+  // 단계별 로더 텍스트 전환 — "인증 중..." 이 데이터 로딩·렌더링 시간까지 모두 포함해 길어 보이던 문제를 해결
+  viz.addEventListener('workbookready',      () => setStage('워크북 준비 완료', '데이터 렌더링 대기…'));
+  viz.addEventListener('firstvizsizeknown',  () => setStage('차트 그리는 중…',   '복잡한 대시보드는 수십 초 걸릴 수 있습니다'));
+  viz.addEventListener('firstinteractive',   () => { stamp('firstinteractive(hideLoader)'); hideLoader(); });
+  viz.addEventListener('vizloaderror', (e) => {
+    const detail = e && e.detail ? JSON.stringify(e.detail).slice(0, 200) : '';
+    showError('⚠️ 대시보드 로딩 실패. URL 및 권한을 확인하세요.' + (detail ? '<br><span style="opacity:.7;font-size:10px;">' + _escapeHtml(detail) + '</span>' : ''));
   });
 
-  // Viz 로드 이벤트 바인딩 + JWT 토큰 주입
-  // Tableau Cloud 대시보드: /api/token 에서 JWT를 받아와 token 속성에 주입합니다.
-  dashboards.forEach(d => {
-    if (d.url && !isPublicUrl(d.url)) {
-      const viz = document.getElementById('viz-' + d.id);
-      const loader = document.getElementById('loading-' + d.id);
-      if (viz && loader) {
-        const t0 = performance.now();
-        const stamp = (label) => {
-          const dt = Math.round(performance.now() - t0);
-          console.log(`[tableau-viz:${d.id}] +${dt}ms ${label}`);
-        };
-        const setStage = (text, sub) => {
-          const textEl = loader.querySelector('.loading-text');
-          if (textEl) {
-            textEl.innerHTML = text + (sub
-              ? `<br><span style="display:block;margin-top:4px;font-size:10px;opacity:.7;">${sub}</span>`
-              : '');
-          }
-        };
-        const hideLoader = () => loader.classList.add('hidden');
-        const showError = (msg) => {
-          loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;">' + (msg || '⚠️ 대시보드를 불러올 수 없습니다.') + '</div>';
-        };
-        if (viz.workbook) { hideLoader(); return; }
+  // 이벤트가 오지 않는 빌드 대비: workbook 프로퍼티 폴링으로 로더를 숨깁니다.
+  startWorkbookPoll('viz-' + d.id);
 
-        // 전체 Tableau 이벤트를 콘솔에 기록 (디버깅용)
-        ['firstinteractive','firstvizsizeknown','workbookready','vizloaderror','tabswitched','editinprogress','error']
-          .forEach(evt => viz.addEventListener(evt, e => {
-            stamp(evt);
-            console.log('[tableau-viz:' + d.id + ']', evt, e && e.detail);
-          }));
-
-        // 단계별 로더 텍스트 전환 — "인증 중..." 이 데이터 로딩·렌더링 시간까지 모두 포함해 길어 보이던 문제를 해결
-        viz.addEventListener('workbookready',      () => setStage('워크북 준비 완료', '데이터 렌더링 대기…'));
-        viz.addEventListener('firstvizsizeknown',  () => setStage('차트 그리는 중…',   '복잡한 대시보드는 수십 초 걸릴 수 있습니다'));
-        viz.addEventListener('firstinteractive',   () => { stamp('firstinteractive(hideLoader)'); hideLoader(); });
-        viz.addEventListener('vizloaderror', (e) => {
-          const detail = e && e.detail ? JSON.stringify(e.detail).slice(0, 200) : '';
-          showError('⚠️ 대시보드 로딩 실패. URL 및 권한을 확인하세요.' + (detail ? '<br><span style="opacity:.7;font-size:10px;">' + _escapeHtml(detail) + '</span>' : ''));
-        });
-
-        // 타임아웃 안전망 (60초로 늘림 — 큰 대시보드는 25초로 부족)
-        setTimeout(() => {
-          if (!loader.classList.contains('hidden') && !loader.innerHTML.includes('⚠️')) {
-            loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 응답 시간 초과 (60초)<br><span style="opacity:.85;">Tableau 서버 응답 지연 · 대시보드 크기 · 권한 확인</span><br><button onclick="retryEmbed(\'viz-' + d.id + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
-          }
-        }, 60000);
-
-        // JWT 토큰 주입 (비동기). 토큰이 주입되면 tableau-viz 가 인증을 재개합니다.
-        stamp('token-fetch 시작');
-        setStage('인증 중…', 'JWT 토큰 요청');
-        injectToken('viz-' + d.id).then((ok) => {
-          if (!ok) return; // 실패 시 injectToken 내부에서 에러 메시지 처리됨
-          stamp('token-injected');
-          setStage('Tableau 연결 중…', '서버에서 워크북 정의를 받는 중');
-        });
-      }
-    }
+  // JWT 토큰 주입 (비동기). 토큰이 주입되면 tableau-viz 가 인증을 재개합니다.
+  stamp('token-fetch 시작');
+  setStage('인증 중…', 'JWT 토큰 요청');
+  injectToken('viz-' + d.id).then((ok) => {
+    if (!ok) return; // 실패 시 injectToken 내부에서 에러 메시지 처리됨
+    stamp('token-injected');
+    setStage('Tableau 연결 중…', '서버에서 워크북 정의를 받는 중');
   });
 }
 
@@ -921,6 +967,8 @@ function switchView(view, el) {
   document.querySelectorAll('.nav-link').forEach(a => {
     a.classList.toggle('active', a.dataset.view === view);
   });
+  // 보이는 상태가 된 뒤에 임베드를 초기화해야 크기가 올바르게 잡힙니다
+  if (!isNaN(idx)) mountEmbed(idx);
   // Mobile: close sidebar
   sidebar.classList.remove('open');
   overlay.classList.remove('open');
