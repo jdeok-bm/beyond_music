@@ -14,13 +14,16 @@ module.exports = function handler(req, res) {
     'TABLEAU_SECRET_VALUE',
     'TABLEAU_USERNAME',
     'TOKEN_AUDIENCE',
+    'ADMIN_PASSWORD',
+    'ADMIN_SECRET',
   ];
 
   const env = {};
   keys.forEach(k => {
     const v = process.env[k];
+    const isSecret = k === 'TABLEAU_SECRET_VALUE' || k === 'ADMIN_PASSWORD' || k === 'ADMIN_SECRET';
     env[k] = v
-      ? { present: true, length: v.length, preview: k === 'TABLEAU_SECRET_VALUE' ? null : v.slice(0, 8) }
+      ? { present: true, length: v.length, preview: isSecret ? null : v.slice(0, 8) }
       : { present: false };
   });
 

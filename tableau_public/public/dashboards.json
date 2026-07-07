@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "categories": ["매출(인접권료)", "Deal List"],
   "dashboards": [
     {
       "id": "dash-1777009008749",
