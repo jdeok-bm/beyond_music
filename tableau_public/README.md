@@ -21,6 +21,7 @@ tableau_public/
 │   ├── admin-login.js         # 관리자 로그인 (비밀번호 검증 + 세션 쿠키 발급)
 │   ├── admin-session.js       # 관리자 세션 확인
 │   ├── admin-logout.js        # 관리자 로그아웃
+│   ├── save-dashboards.js     # 배포하기 — dashboards.json 을 GitHub에 자동 커밋
 │   └── diag.js                 # 환경변수 진단
 ├── lib/
 │   └── adminAuth.js            # 관리자 세션 쿠키 서명/검증 헬퍼
@@ -82,10 +83,14 @@ Vercel 대시보드 → 프로젝트 선택 → **Settings** → **Environment V
 | `TOKEN_AUDIENCE` | 배포된 Vercel URL (예: `https://tableau-portal-xxx.vercel.app`) |
 | `ADMIN_PASSWORD` | `/admin` 로그인에 사용할 비밀번호 (직접 정하세요) |
 | `ADMIN_SECRET` | 세션 쿠키 서명용 임의의 긴 문자열 (예: `openssl rand -hex 32`) |
+| `GITHUB_TOKEN` | repo 쓰기 권한이 있는 GitHub 토큰 — 관리자 페이지의 **배포하기** 버튼(자동 커밋·배포)에 사용 |
+| `GITHUB_REPO` | (선택) 대상 저장소. 기본값 `jdeok-bm/beyond_music` |
+| `GITHUB_BRANCH` | (선택) 커밋 대상 브랜치. 기본값 `main` |
 
 등록 후 **Redeploy** (Deployments 탭 → 최신 배포 우클릭 → Redeploy)
 
-`ADMIN_PASSWORD` / `ADMIN_SECRET`이 없으면 `/admin` 로그인이 항상 실패합니다.
+`ADMIN_PASSWORD` / `ADMIN_SECRET`이 없으면 `/admin` 로그인이 항상 실패하고,
+`GITHUB_TOKEN`이 없으면 배포하기 버튼이 실패합니다(수동 JSON 커밋은 계속 가능).
 
 ---
 
@@ -94,12 +99,13 @@ Vercel 대시보드 → 프로젝트 선택 → **Settings** → **Environment V
 1. 배포된 사이트에서 `/admin` 접속 후 `ADMIN_PASSWORD`로 로그인
 2. **대시보드 추가** 버튼으로 이름·그룹·URL 등록 (Tableau Public URL 권장)
 3. **그룹(카테고리)** 패널에서 그룹 순서·이름을 원하는 대로 구성
-4. **팀과 공유하기** 탭 → **JSON 복사** → GitHub에서
-   `tableau_public/public/dashboards.json` 내용을 교체하고 commit
-5. Vercel이 자동 재배포되면 뷰어(`/`)의 모든 방문자에게 동일한 대시보드·그룹이 보입니다
+4. 우측 상단 **배포하기** 클릭 — 서버가 GitHub의
+   `tableau_public/public/dashboards.json` 에 자동으로 커밋하고, Vercel이 재배포합니다
+5. 1~2분 뒤 뷰어(`/`)의 모든 방문자에게 동일한 대시보드·그룹이 보입니다
 
-> 그룹/대시보드 변경사항은 현재 수동 커밋으로 반영됩니다(자동 반영 아님). 브라우저를 닫아도
-> 작업 중이던 내용은 `/admin` 화면의 임시 저장(브라우저 로컬 저장소)에 남아있어 이어서 작업할 수 있습니다.
+> 자동 배포가 실패하는 경우(`GITHUB_TOKEN` 미설정·만료 등)에는 **팀과 공유하기** 탭의
+> **JSON 복사** → GitHub에서 파일 교체 → commit 으로 수동 반영할 수 있습니다.
+> 배포 전 작업 내용은 브라우저 로컬 저장소에 임시 저장되어, 창을 닫아도 이어서 작업할 수 있습니다.
 
 ---
 

@@ -154,6 +154,15 @@
     .btn-ghost:hover { background: var(--color-surface-offset); color: var(--color-text); }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
     .btn svg { width: 15px; height: 15px; }
+    .loading-dot {
+      width: 13px; height: 13px; flex-shrink: 0;
+      border: 2px solid oklch(from currentColor l c h / 0.3);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      display: inline-block;
+      animation: btnspin 0.8s linear infinite;
+    }
+    @keyframes btnspin { to { transform: rotate(360deg); } }
 
     .section-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
     .section-title { font-size: var(--text-lg); font-weight: 700; line-height: 1.2; }
@@ -331,12 +340,18 @@
         <div class="section-header">
           <div>
             <div class="section-title">대시보드 · 그룹 관리</div>
-            <div class="section-desc">그룹(카테고리) 순서를 정하고, 대시보드를 추가·수정·정렬하세요</div>
+            <div class="section-desc">수정 후 <b>배포하기</b>를 누르면 1~2분 내에 모든 방문자에게 반영됩니다</div>
           </div>
-          <button class="btn btn-primary" onclick="openAddModal()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            대시보드 추가
-          </button>
+          <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;">
+            <button class="btn btn-ghost" onclick="openAddModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              대시보드 추가
+            </button>
+            <button class="btn btn-primary" id="deployBtn" onclick="deployChanges()" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              배포하기
+            </button>
+          </div>
         </div>
 
         <div class="panel">
@@ -371,7 +386,7 @@
         <div class="section-header">
           <div>
             <div class="section-title">팀과 설정 공유하기</div>
-            <div class="section-desc">아래 JSON을 <code style="font-family:var(--font-mono);color:var(--color-primary);">tableau_public/public/dashboards.json</code>에 붙여넣고 커밋하면, 재배포 후 모든 방문자에게 반영됩니다.</div>
+            <div class="section-desc">평소에는 <b>대시보드 · 그룹</b> 탭의 <b>배포하기</b> 버튼이 자동으로 커밋·배포합니다. 이 화면은 자동 배포가 실패할 때(GITHUB_TOKEN 미설정 등) 수동으로 반영하는 백업 수단입니다.</div>
           </div>
         </div>
         <div class="panel">
@@ -553,12 +568,62 @@ async function checkSession() {
 let dashboards = [];
 let categoryOrder = [];
 let editingId = null;
+let dirty = false; // 마지막 배포(또는 서버 로드) 이후 수정 여부
 const DRAFT_KEY = 'tb_admin_draft';
 
 function saveDraft() {
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ dashboards, categoryOrder, savedAt: Date.now() }));
   } catch {}
+  dirty = true;
+  updateDeployBtn();
+}
+
+function updateDeployBtn() {
+  const btn = document.getElementById('deployBtn');
+  if (!btn) return;
+  btn.disabled = !dirty;
+  btn.innerHTML = dirty
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 19V5M5 12l7-7 7 7"/></svg> 배포하기 <span style="width:7px;height:7px;border-radius:50%;background:var(--color-warning);display:inline-block;"></span>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="20 6 9 17 4 12"/></svg> 배포됨';
+}
+
+// ─── 저장 & 자동 배포 ───
+// 현재 화면의 그룹/대시보드 구성을 서버(/api/save-dashboards)로 보내면,
+// 서버가 GitHub의 dashboards.json 에 커밋하고 Vercel 이 자동 재배포합니다.
+async function deployChanges() {
+  const btn = document.getElementById('deployBtn');
+  if (!btn || btn.disabled) return;
+  getAllCategories();
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-dot"></span> 배포 중…';
+  try {
+    const res = await fetch('/api/save-dashboards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories: categoryOrder, dashboards }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      showToast('세션이 만료되었습니다. 다시 로그인해주세요', 'error');
+      setTimeout(() => location.reload(), 1200);
+      return;
+    }
+    if (!res.ok) {
+      showToast(body.message || body.error || '배포에 실패했습니다', 'error');
+      btn.disabled = false;
+      updateDeployBtn();
+      return;
+    }
+    dirty = false;
+    updateDeployBtn();
+    showToast(body.unchanged ? '변경사항이 없습니다' : (body.message || '배포를 시작했습니다 (1~2분 후 반영)'));
+  } catch (e) {
+    console.error('[deploy] failed:', e);
+    showToast('네트워크 오류로 배포에 실패했습니다', 'error');
+    btn.disabled = false;
+    updateDeployBtn();
+  }
 }
 
 async function loadServerConfig() {
@@ -596,16 +661,20 @@ async function boot() {
   try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch {}
 
   if (draft && draft.dashboards && draft.dashboards.length &&
-      confirm('저장하지 않은 변경사항이 있습니다. 이어서 작업할까요?\n(취소하면 서버에 배포된 최신 버전을 불러옵니다)')) {
+      confirm('배포하지 않은 변경사항이 있습니다. 이어서 작업할까요?\n(취소하면 서버에 배포된 최신 버전을 불러옵니다)')) {
     dashboards = draft.dashboards;
     categoryOrder = draft.categoryOrder || [];
+    dirty = true; // 서버와 다를 수 있으므로 배포 버튼 활성화
   } else if (server) {
     dashboards = server.dashboards;
     categoryOrder = server.categoryOrder;
+    dirty = false;
   } else {
     dashboards = [];
     categoryOrder = [];
+    dirty = false;
   }
+  updateDeployBtn();
   renderAll();
 }
 
@@ -972,6 +1041,8 @@ async function reloadFromServer() {
   dashboards = server.dashboards;
   categoryOrder = server.categoryOrder;
   saveDraft();
+  dirty = false; // 서버 버전과 동일한 상태이므로 배포할 것이 없습니다
+  updateDeployBtn();
   renderAll();
   showToast('서버 버전을 불러왔습니다');
 }
