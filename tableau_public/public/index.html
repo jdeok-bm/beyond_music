@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Analytics Portal</title>
+  <title>BeyondMusic Dashboards</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Tableau CDN/API 사전 연결 (TLS handshake 선행으로 로드 시간 단축) -->
@@ -55,6 +55,7 @@
       --space-16: 4rem;
       --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
       --sidebar-w: 260px;
+      --topbar-h: 56px;
     }
     [data-theme="dark"] {
       --color-bg:              #141413;
@@ -90,9 +91,10 @@
 
     /* ─── Base ─── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+    html { -webkit-font-smoothing: antialiased; }
     body {
-      min-height: 100dvh;
+      height: 100dvh;
+      overflow: hidden;
       font-family: var(--font-body);
       font-size: var(--text-sm);
       color: var(--color-text);
@@ -112,7 +114,7 @@
     }
 
     /* ─── Layout Shell ─── */
-    .app-shell { display: flex; min-height: 100dvh; }
+    .app-shell { display: flex; height: 100dvh; }
 
     /* ─── Sidebar ─── */
     .sidebar {
@@ -178,15 +180,35 @@
       color: var(--color-primary);
     }
     .nav-link svg { width: 16px; height: 16px; flex-shrink: 0; }
-    .nav-badge {
+
+    /* ─── Dashboard Groups (카테고리) ─── */
+    .nav-groups { padding: var(--space-2) 0; }
+    .nav-group { margin-bottom: 2px; }
+    .nav-group-header {
+      display: flex; align-items: center; gap: var(--space-2);
+      margin: 0 var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      color: var(--color-text-muted);
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+    .nav-group-header:hover { background: var(--color-surface-offset); color: var(--color-text); }
+    .nav-group-header .chevron { width: 12px; height: 12px; transition: transform var(--transition); flex-shrink: 0; }
+    .nav-group-header span.label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-group-count {
       margin-left: auto;
+      font-size: 10px; font-weight: 600;
       background: var(--color-surface-offset);
       color: var(--color-text-muted);
-      font-size: 11px;
-      font-weight: 600;
       padding: 1px 7px;
       border-radius: var(--radius-full);
+      flex-shrink: 0;
     }
+    .nav-group.collapsed .chevron { transform: rotate(-90deg); }
+    .nav-group.collapsed .nav-list { display: none; }
 
     .sidebar-footer {
       margin-top: auto;
@@ -222,7 +244,8 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      min-height: 100dvh;
+      height: 100dvh;
+      min-width: 0;
     }
 
     /* ─── Top Bar ─── */
@@ -230,12 +253,11 @@
       background: var(--color-surface);
       border-bottom: 1px solid var(--color-border);
       padding: 0 var(--space-6);
-      height: 56px;
+      height: var(--topbar-h);
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       gap: var(--space-4);
-      position: sticky;
-      top: 0;
       z-index: 50;
     }
     .mobile-menu-btn {
@@ -252,9 +274,13 @@
       display: flex;
       align-items: center;
       gap: var(--space-2);
+      min-width: 0;
     }
-    .page-breadcrumb strong { color: var(--color-text); font-weight: 600; }
-    .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
+    .page-breadcrumb strong {
+      color: var(--color-text); font-weight: 600;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
     .btn {
       display: inline-flex; align-items: center; gap: var(--space-2);
       padding: var(--space-2) var(--space-4);
@@ -262,11 +288,6 @@
       font-size: var(--text-sm); font-weight: 500;
       cursor: pointer; border: none; text-decoration: none;
     }
-    .btn-primary {
-      background: var(--color-primary);
-      color: #fff;
-    }
-    .btn-primary:hover { background: var(--color-primary-hover); }
     .btn-ghost {
       background: transparent;
       color: var(--color-text-muted);
@@ -275,90 +296,14 @@
     .btn-ghost:hover { background: var(--color-surface-offset); color: var(--color-text); }
     .btn svg { width: 15px; height: 15px; }
 
-    /* ─── Page Body ─── */
-    .page-body { padding: var(--space-6); flex: 1; }
+    /* ─── Page Body: 대시보드가 화면 전체를 채웁니다 ─── */
+    .page-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .view-section { display: none; flex: 1; min-height: 0; flex-direction: column; }
+    .view-section.active { display: flex; }
 
-    /* ─── Page Section: View ─── */
-    .view-section { display: none; }
-    .view-section.active { display: flex; flex-direction: column; gap: var(--space-6); }
-
-    /* ─── Section Header ─── */
-    .section-header {
-      display: flex; align-items: flex-start;
-      justify-content: space-between; gap: var(--space-4);
-      flex-wrap: wrap;
-    }
-    .section-title {
-      font-size: var(--text-lg);
-      font-weight: 700;
-      color: var(--color-text);
-      line-height: 1.2;
-    }
-    .section-desc {
-      font-size: var(--text-sm);
-      color: var(--color-text-muted);
-      margin-top: var(--space-1);
-    }
-
-    /* ─── Dashboard Grid ─── */
-    .dashboard-grid {
-      display: grid;
-      gap: var(--space-4);
-      grid-template-columns: 1fr;
-    }
-    .dashboard-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
-
-    /* ─── Dashboard Card ─── */
-    .dashboard-card {
-      background: var(--color-surface-2);
-      border: 1px solid oklch(from var(--color-text) l c h / 0.08);
-      border-radius: var(--radius-xl);
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      transition: box-shadow var(--transition);
-    }
-    .dashboard-card:hover { box-shadow: var(--shadow-md); }
-    .card-header {
-      padding: var(--space-4) var(--space-5);
-      border-bottom: 1px solid var(--color-divider);
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-    }
-    .card-title { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); }
-    .card-subtitle { font-size: var(--text-xs); color: var(--color-text-muted); }
-    .card-badge {
-      margin-left: auto;
-      font-size: 11px; font-weight: 600;
-      padding: 2px 8px;
-      border-radius: var(--radius-full);
-    }
-    .badge-live { background: color-mix(in oklch, var(--color-success) 15%, transparent); color: var(--color-success); }
-    .badge-updated { background: color-mix(in oklch, var(--color-primary) 15%, transparent); color: var(--color-primary); }
-    .card-icon {
-      width: 30px; height: 30px;
-      border-radius: var(--radius-md);
-      background: var(--color-primary-highlight);
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .card-icon svg { width: 15px; height: 15px; color: var(--color-primary); }
-    .card-actions { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
-    .icon-btn {
-      width: 28px; height: 28px;
-      border-radius: var(--radius-sm);
-      display: flex; align-items: center; justify-content: center;
-      color: var(--color-text-muted);
-    }
-    .icon-btn:hover { background: var(--color-surface-offset); color: var(--color-text); }
-    .icon-btn svg { width: 14px; height: 14px; }
-
-    /* ─── Tableau Embed Container ─── */
-    .tableau-embed-wrapper {
-      position: relative;
-      width: 100%;
-      background: var(--color-surface-offset);
-    }
+    /* ─── Tableau Embed (꽉 채움) ─── */
+    .embed-fill { position: relative; flex: 1; min-height: 0; background: var(--color-surface-offset); }
+    .embed-fill iframe, .embed-fill tableau-viz { display: block; width: 100%; height: 100%; border: none; }
     .tableau-loading {
       position: absolute; inset: 0;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -375,130 +320,29 @@
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-text { font-size: var(--text-xs); color: var(--color-text-muted); }
+    .loading-text { font-size: var(--text-xs); color: var(--color-text-muted); text-align: center; }
 
-    /* Placeholder card (설정 전 안내) */
+    /* 대시보드 URL 미설정 안내 (관리자가 URL을 아직 등록하지 않은 경우) */
     .embed-placeholder {
+      position: absolute; inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: var(--space-16) var(--space-8);
+      padding: var(--space-8);
       gap: var(--space-3);
-      min-height: 340px;
     }
-    .placeholder-icon {
-      width: 48px; height: 48px;
-      color: var(--color-text-faint);
-      margin-bottom: var(--space-2);
-    }
+    .placeholder-icon { width: 48px; height: 48px; color: var(--color-text-faint); margin-bottom: var(--space-2); }
     .placeholder-title { font-size: var(--text-base); font-weight: 600; color: var(--color-text); }
     .placeholder-desc { font-size: var(--text-sm); color: var(--color-text-muted); max-width: 36ch; }
-    .placeholder-code {
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      background: var(--color-surface-offset);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      padding: var(--space-3) var(--space-4);
-      color: var(--color-primary);
-      text-align: left;
-      width: 100%;
-      max-width: 500px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
 
-    /* ─── Settings Panel ─── */
-    .settings-panel {
-      background: var(--color-surface-2);
-      border: 1px solid oklch(from var(--color-text) l c h / 0.08);
-      border-radius: var(--radius-xl);
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
+    /* 표시할 대시보드가 하나도 없을 때 */
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: var(--space-3); color: var(--color-text-muted); text-align: center; padding: var(--space-8);
     }
-    .settings-panel-header {
-      padding: var(--space-4) var(--space-5);
-      border-bottom: 1px solid var(--color-divider);
-    }
-    .settings-panel-body { padding: var(--space-5); }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
-    .form-group { display: flex; flex-direction: column; gap: var(--space-2); }
-    .form-group.full-width { grid-column: 1 / -1; }
-    .form-label { font-size: var(--text-xs); font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .form-input, .form-select, .form-textarea {
-      background: var(--color-bg);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      padding: var(--space-2) var(--space-3);
-      font-size: var(--text-sm);
-      color: var(--color-text);
-      font-family: var(--font-body);
-      width: 100%;
-      transition: border-color var(--transition), box-shadow var(--transition);
-    }
-    .form-input:focus, .form-select:focus, .form-textarea:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 20%, transparent);
-    }
-    .form-textarea { resize: vertical; min-height: 80px; }
-    .form-hint { font-size: 11px; color: var(--color-text-muted); }
-    .form-actions { display: flex; gap: var(--space-3); justify-content: flex-end; margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-divider); }
-
-    /* ─── How-to Guide Card ─── */
-    .guide-card {
-      background: var(--color-surface-2);
-      border: 1px solid oklch(from var(--color-text) l c h / 0.08);
-      border-radius: var(--radius-xl);
-      padding: var(--space-5);
-      box-shadow: var(--shadow-sm);
-    }
-    .guide-steps { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-4); }
-    .guide-step { display: flex; gap: var(--space-4); align-items: flex-start; }
-    .step-num {
-      width: 24px; height: 24px; flex-shrink: 0;
-      background: var(--color-primary);
-      color: #fff;
-      border-radius: var(--radius-full);
-      font-size: 12px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      margin-top: 2px;
-    }
-    .step-content {}
-    .step-title { font-size: var(--text-sm); font-weight: 600; }
-    .step-desc { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 2px; line-height: 1.6; }
-    .step-code {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      background: var(--color-surface-offset);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-sm);
-      padding: var(--space-2) var(--space-3);
-      color: var(--color-primary);
-      margin-top: var(--space-2);
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    /* ─── Auth Options Card ─── */
-    .auth-option {
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
-      padding: var(--space-4);
-      margin-top: var(--space-3);
-    }
-    .auth-option-title { font-size: var(--text-sm); font-weight: 600; display: flex; align-items: center; gap: var(--space-2); }
-    .auth-option-desc { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-1); line-height: 1.6; }
-    .tag {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
-      padding: 1px 6px; border-radius: var(--radius-full);
-      text-transform: uppercase;
-    }
-    .tag-recommended { background: color-mix(in oklch, var(--color-primary) 15%, transparent); color: var(--color-primary); }
-    .tag-simple { background: color-mix(in oklch, var(--color-success) 15%, transparent); color: var(--color-success); }
-    .tag-advanced { background: color-mix(in oklch, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+    .empty-state svg { width: 48px; height: 48px; color: var(--color-text-faint); }
 
     /* ─── Overlay (mobile) ─── */
     .sidebar-overlay {
@@ -537,9 +381,6 @@
       .sidebar-overlay.open { display: block; }
       .main-content { margin-left: 0; }
       .mobile-menu-btn { display: flex; }
-      .dashboard-grid.cols-2 { grid-template-columns: 1fr; }
-      .form-grid { grid-template-columns: 1fr; }
-      .page-body { padding: var(--space-4); }
     }
     @media (max-width: 600px) {
       .topbar { padding: 0 var(--space-4); }
@@ -552,38 +393,22 @@
   <nav class="sidebar" id="sidebar" aria-label="주 메뉴">
     <div class="sidebar-header">
       <!-- SVG Logo -->
-      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-label="Analytics Portal">
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-label="BeyondMusic Dashboards">
         <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
         <rect x="8" y="18" width="4" height="7" rx="1" fill="white" opacity="0.9"/>
         <rect x="14" y="13" width="4" height="12" rx="1" fill="white"/>
         <rect x="20" y="7" width="4" height="18" rx="1" fill="white" opacity="0.75"/>
       </svg>
       <div>
-        <div class="logo-text">Analytics Portal</div>
+        <div class="logo-text">BeyondMusic Dashboards</div>
         <div class="logo-sub">Beyond Music</div>
       </div>
     </div>
 
     <div class="sidebar-section-label">대시보드</div>
-    <ul class="nav-list" id="dashboardNavList">
-      <!-- 동적으로 채워짐 -->
-    </ul>
-
-    <div class="sidebar-section-label">설정</div>
-    <ul class="nav-list">
-      <li class="nav-item">
-        <a href="#" class="nav-link" data-view="setup" onclick="switchView('setup',this);return false;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-          대시보드 설정
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="#" class="nav-link" data-view="guide" onclick="switchView('guide',this);return false;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          연동 가이드
-        </a>
-      </li>
-    </ul>
+    <div class="nav-groups" id="dashboardNavGroups">
+      <!-- 동적으로 채워짐 (카테고리별 그룹) -->
+    </div>
 
     <div class="sidebar-footer">
       <div class="user-info">
@@ -609,7 +434,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <div class="page-breadcrumb" id="pageBreadcrumb">
-        <span>Analytics Portal</span>
+        <span>BeyondMusic Dashboards</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         <strong id="breadcrumbTitle">대시보드</strong>
       </div>
@@ -618,244 +443,12 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           새로고침
         </button>
-        <button class="btn btn-primary" onclick="addDashboard()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          대시보드 추가
-        </button>
       </div>
     </header>
 
     <main class="page-body">
       <!-- 대시보드 뷰 (동적 생성) -->
-      <div id="dashboardViews"></div>
-
-      <!-- 설정 뷰 -->
-      <section class="view-section" id="view-setup">
-        <div class="section-header">
-          <div>
-            <div class="section-title">대시보드 설정</div>
-            <div class="section-desc">Tableau Cloud 대시보드 URL을 입력하여 임베딩을 구성하세요</div>
-          </div>
-        </div>
-
-        <div class="settings-panel">
-          <div class="settings-panel-header">
-            <div class="card-title">새 대시보드 추가</div>
-            <div class="card-subtitle" style="margin-top:2px;">Tableau Public 또는 Tableau Cloud 대시보드 URL을 입력하세요</div>
-          </div>
-          <div class="settings-panel-body">
-            <!-- URL 타입 안내 배너 -->
-            <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap;">
-              <div style="flex:1;min-width:200px;background:color-mix(in oklch,var(--color-success) 10%,transparent);border:1px solid color-mix(in oklch,var(--color-success) 30%,transparent);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);">
-                <div style="font-size:var(--text-xs);font-weight:700;color:var(--color-success);margin-bottom:4px;">✅ Tableau Public (권장)</div>
-                <div style="font-size:11px;color:var(--color-text-muted);line-height:1.6;">로그인 불필요 · 누구나 열람 가능<br>URL 예시:<br><code style="font-family:var(--font-mono);color:var(--color-primary);">public.tableau.com/views/...</code></div>
-              </div>
-              <div style="flex:1;min-width:200px;background:color-mix(in oklch,var(--color-warning) 10%,transparent);border:1px solid color-mix(in oklch,var(--color-warning) 30%,transparent);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);">
-                <div style="font-size:var(--text-xs);font-weight:700;color:var(--color-warning);margin-bottom:4px;">⚠️ Tableau Cloud (인증 필요)</div>
-                <div style="font-size:11px;color:var(--color-text-muted);line-height:1.6;">방문자도 Tableau 로그인 필요<br>URL 예시:<br><code style="font-family:var(--font-mono);color:var(--color-primary);">*.online.tableau.com/...</code></div>
-              </div>
-            </div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label class="form-label" for="dashName">대시보드 이름</label>
-                <input type="text" class="form-input" id="dashName" placeholder="예: 월별 스트리밍 현황">
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="dashCategory">카테고리</label>
-                <input type="text" class="form-input" id="dashCategory" placeholder="예: 매출 분석, 아티스트">
-              </div>
-              <div class="form-group full-width">
-                <label class="form-label" for="dashUrl">Tableau 대시보드 URL <span style="color:var(--color-error)">*</span></label>
-                <input type="url" class="form-input" id="dashUrl" placeholder="https://public.tableau.com/views/워크북이름/대시보드이름" oninput="previewUrlType(this.value)">
-                <div id="urlTypeHint" class="form-hint">Tableau Public: 대시보드 열기 → 공유 → 링크 복사</div>
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="dashHeight">임베드 높이 (px)</label>
-                <input type="number" class="form-input" id="dashHeight" value="800" min="400" max="2000">
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="dashRefresh">업데이트 주기</label>
-                <select class="form-select" id="dashRefresh">
-                  <option value="live">실시간</option>
-                  <option value="daily">매일</option>
-                  <option value="weekly">매주</option>
-                  <option value="manual">수동</option>
-                </select>
-              </div>
-              <div class="form-group full-width">
-                <label class="form-label" for="dashDesc">설명 (선택)</label>
-                <textarea class="form-textarea" id="dashDesc" placeholder="이 대시보드에 대한 간략한 설명을 입력하세요"></textarea>
-              </div>
-            </div>
-            <div class="form-actions">
-              <button class="btn btn-ghost" onclick="resetForm()">초기화</button>
-              <button class="btn btn-ghost" style="color:var(--color-error);" onclick="if(confirm('저장된 모든 대시보드를 초기화합니까?')){localStorage.removeItem('tb_dashboards');location.reload();}">데이터 초기화</button>
-              <button class="btn btn-primary" onclick="saveDashboard()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
-                대시보드 저장
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 등록된 대시보드 목록 -->
-        <div class="settings-panel" id="dashboardListPanel">
-          <div class="settings-panel-header">
-            <div class="card-title">등록된 대시보드</div>
-          </div>
-          <div class="settings-panel-body" id="dashboardList">
-            <div style="color:var(--color-text-muted);font-size:var(--text-sm);padding:var(--space-4) 0;">아직 등록된 대시보드가 없습니다.</div>
-          </div>
-        </div>
-
-        <!-- 공용 설정 공유 -->
-        <div class="settings-panel" id="sharedConfigPanel">
-          <div class="settings-panel-header">
-            <div class="card-title">팀과 설정 공유하기</div>
-            <div class="card-subtitle" style="margin-top:2px;">현재 포털은 내 브라우저(localStorage)에만 저장됩니다. 팀원 전원에게 같은 대시보드 목록을 보여주려면 아래 JSON을 <code style="font-family:var(--font-mono);color:var(--color-primary);">public/dashboards.json</code>에 붙여넣고 GitHub에 push하세요.</div>
-          </div>
-          <div class="settings-panel-body">
-            <div class="form-actions" style="justify-content:flex-start;flex-wrap:wrap;gap:var(--space-3);margin-bottom:var(--space-3);">
-              <button class="btn btn-primary" onclick="exportConfigToClipboard()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-                내 설정을 JSON으로 복사
-              </button>
-              <button class="btn btn-ghost" onclick="downloadConfigJson()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                dashboards.json 다운로드
-              </button>
-              <button class="btn btn-ghost" onclick="reloadFromServer()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                서버 설정 다시 불러오기
-              </button>
-            </div>
-            <textarea id="configJsonView" readonly style="width:100%;min-height:220px;font-family:var(--font-mono);font-size:11px;padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg);color:var(--color-text);resize:vertical;" placeholder="'내 설정을 JSON으로 복사' 버튼을 누르면 여기에 표시됩니다."></textarea>
-            <div class="card-subtitle" style="margin-top:var(--space-3);line-height:1.6;">
-              <b>공유 절차:</b><br>
-              1. 이 화면에서 대시보드 URL을 모두 입력·저장<br>
-              2. <b>[내 설정을 JSON으로 복사]</b> 클릭 → 클립보드에 복사됨<br>
-              3. GitHub에서 <code style="font-family:var(--font-mono);">public/dashboards.json</code> 파일 열고 내용 교체 → commit<br>
-              4. Vercel 자동 재배포 → 모든 방문자가 같은 대시보드를 봄
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 연동 가이드 뷰 -->
-      <section class="view-section" id="view-guide">
-        <div class="section-header">
-          <div>
-            <div class="section-title">Tableau 연동 가이드</div>
-            <div class="section-desc">사내 포털에 Tableau Cloud 대시보드를 임베딩하는 방법을 안내합니다</div>
-          </div>
-        </div>
-
-        <div class="guide-card">
-          <div class="card-title">🔐 인증 방식 선택</div>
-          <div class="card-subtitle" style="margin-top:4px;">Tableau Cloud 임베딩 인증에는 3가지 옵션이 있습니다</div>
-          <div style="margin-top:var(--space-4); display:flex; flex-direction:column; gap:var(--space-3);">
-            <div class="auth-option">
-              <div class="auth-option-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-success)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                Connected Apps (Direct Trust) + JWT
-                <span class="tag tag-recommended">사내 권장</span>
-              </div>
-              <div class="auth-option-desc">백엔드 서버에서 JWT 토큰을 생성하여 사용자 인증. 별도 IdP 없이 사용 가능. Viewer 라이선스 불필요 (On-Demand Access 활성화 시). 사내 직원 전용 포털에 최적.</div>
-              <div class="step-code">1. Tableau Cloud → 설정 → Connected Apps → 새 앱 만들기
-2. Client ID와 Secret 복사
-3. 백엔드에서 JWT 생성 후 &lt;tableau-viz token="JWT"&gt; 에 전달</div>
-            </div>
-            <div class="auth-option">
-              <div class="auth-option-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-primary)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                Tableau 로그인 세션 기반 (iframe)
-                <span class="tag tag-simple">가장 간단</span>
-              </div>
-              <div class="auth-option-desc">직원이 Tableau Cloud에 이미 로그인된 상태에서 iframe으로 직접 임베딩. 추가 설정 불필요. 단, 제3자 쿠키 차단 시 재로그인 필요할 수 있음.</div>
-              <div class="step-code">&lt;iframe src="https://YOUR_SITE.online.tableau.com/views/WORKBOOK/SHEET?:embed=y&:toolbar=no" width="100%" height="800"&gt;&lt;/iframe&gt;</div>
-            </div>
-            <div class="auth-option">
-              <div class="auth-option-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-warning)"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                OAuth 2.0 Trust (EAS)
-                <span class="tag tag-advanced">고급</span>
-              </div>
-              <div class="auth-option-desc">Azure AD, Okta 등 기존 IdP가 있을 때 사용. SSO 연동으로 완전한 무로그인 경험 제공. IdP 설정 필요.</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="guide-card">
-          <div class="card-title">⚡ 빠른 시작: Embedding API v3</div>
-          <div class="guide-steps">
-            <div class="guide-step">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Tableau Embedding API v3 라이브러리 로드</div>
-                <div class="step-desc">HTML &lt;head&gt;에 script 태그 추가 (CDN)</div>
-                <div class="step-code">&lt;script type="module" src="https://prod-kr-a.online.tableau.com/javascripts/api/tableau.embedding.3.latest.min.js"&gt;&lt;/script&gt;</div>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">tableau-viz 웹 컴포넌트 삽입</div>
-                <div class="step-desc">원하는 위치에 커스텀 HTML 태그 추가</div>
-                <div class="step-code">&lt;tableau-viz
-  id="myViz"
-  src="https://YOUR_SITE.online.tableau.com/views/WORKBOOK/SHEET"
-  width="100%"
-  height="800"
-  hide-tabs
-  toolbar="hidden"
-  token="YOUR_JWT_TOKEN"&gt;
-&lt;/tableau-viz&gt;</div>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="step-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Tableau Cloud에서 대시보드 URL 확인</div>
-                <div class="step-desc">Tableau Cloud → 대시보드 열기 → 공유 버튼 → 내장 코드 복사 또는 URL 복사</div>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="step-num">4</div>
-              <div class="step-content">
-                <div class="step-title">Connected Apps 설정 (JWT 인증)</div>
-                <div class="step-desc">사내 백엔드에서 JWT를 생성하여 token 속성으로 전달. Python 예시:</div>
-                <div class="step-code">import jwt, uuid, datetime
-token = jwt.encode({
-  "iss": CLIENT_ID,          # Connected App Client ID
-  "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=10),
-  "jti": str(uuid.uuid4()),
-  "aud": "tableau",
-  "sub": user_email,
-  "scp": ["tableau:views:embed"]
-}, SECRET_VALUE, algorithm="HS256", headers={"kid": SECRET_ID, "iss": CLIENT_ID})</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="guide-card">
-          <div class="card-title">📋 Viewer 라이선스 없이 임베딩하는 방법 (On-Demand Access)</div>
-          <div style="margin-top:var(--space-3);font-size:var(--text-sm);color:var(--color-text-muted);line-height:1.7;">
-            Tableau Cloud의 <strong style="color:var(--color-text)">On-Demand Access (ODA)</strong> 기능을 활성화하면, Tableau 라이선스가 없는 사내 직원도 JWT를 통해 임시 세션으로 대시보드를 열람할 수 있습니다.<br><br>
-            <strong style="color:var(--color-text)">설정 경로:</strong> Tableau Cloud → 설정 → Connected Apps → 앱 편집 → On-Demand Access 활성화
-            <div class="step-code" style="margin-top:var(--space-3);"># JWT에 ODA 관련 클레임 추가
-{
-  "iss": CLIENT_ID,
-  "sub": "viewer-user@company.com",  # 임의 이메일 가능 (ODA 활성화 시)
-  "aud": "tableau",
-  "scp": ["tableau:views:embed"],
-  "exp": ...,
-  "jti": ...
-}</div>
-          </div>
-        </div>
-      </section>
-
+      <div id="dashboardViews" style="display:flex; flex-direction:column; flex:1; min-height:0;"></div>
     </main>
   </div>
 </div>
@@ -864,23 +457,30 @@ token = jwt.encode({
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
+// ─── 유틸 ───
+function _escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+}
+
 // ─── State ───
 let dashboards = JSON.parse(localStorage.getItem('tb_dashboards') || '[]');
+let categoryOrder = JSON.parse(localStorage.getItem('tb_category_order') || '[]');
 let currentView = 'dashboard-0';
-let editingId = null;
-let _hadLocal = dashboards.length > 0; // 최초 로드 시 로컬 데이터 유무 기록
+let _hadLocal = dashboards.length > 0; // 최초 로드 시 로컬 캐시 유무 기록 (재방문자는 즉시 렌더)
+const _resizeObservers = new Map(); // wrapperId -> ResizeObserver (뷰 재생성 시 정리용)
 
 // ─── 공용 설정(/dashboards.json) 로더 ───
-// repo에 있는 공용 JSON을 가져와, 방문자의 localStorage가 비어 있으면 기본값으로 사용합니다.
-// localStorage에 이미 데이터가 있으면 자동 덮어쓰지 않고 설정 탭의 "서버 설정 불러오기" 버튼으로만 갱신합니다.
+// repo에 있는 공용 JSON을 가져와, 방문자의 캐시가 비어 있으면 기본값으로 사용합니다.
+// 이 포털은 뷰 전용이며 편집 기능은 /admin 에서만 제공됩니다.
 async function loadSharedConfig() {
   try {
     const res = await fetch('/dashboards.json?t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) return null;
     const data = await res.json();
     if (!data || !Array.isArray(data.dashboards)) return null;
-    return data.dashboards
-      .map(d => ({
+    return {
+      categoryOrder: Array.isArray(data.categories) ? data.categories : [],
+      dashboards: data.dashboards.map(d => ({
         id: d.id || ('dash-shared-' + Math.random().toString(36).slice(2, 9)),
         name: d.name || '대시보드',
         category: d.category || '',
@@ -889,7 +489,8 @@ async function loadSharedConfig() {
         refresh: d.refresh || 'daily',
         desc: d.desc || '',
         createdAt: d.createdAt || new Date().toISOString(),
-      }));
+      })),
+    };
   } catch (e) {
     console.warn('[shared-config] /dashboards.json 로드 실패:', e);
     return null;
@@ -945,10 +546,6 @@ const _jwt = {
   }
 };
 
-function _escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
-}
-
 async function injectToken(vizId) {
   const viz = document.getElementById(vizId);
   if (!viz) return false;
@@ -969,7 +566,7 @@ async function injectToken(vizId) {
       } else if (err && err.body) {
         detail = String(err.body).slice(0, 160);
       }
-      loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 인증 토큰을 가져오지 못했습니다.<br><span style="opacity:.85;">' + _escapeHtml(status) + (detail ? ' · ' + _escapeHtml(detail) : '') + '</span><br><a href="/api/diag" target="_blank" style="color:var(--color-error);text-decoration:underline;margin-top:4px;display:inline-block;font-size:11px;">환경변수 진단 열기</a><br><button onclick="retryEmbed(\'' + vizId + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
+      loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 인증 토큰을 가져오지 못했습니다.<br><span style="opacity:.85;">' + _escapeHtml(status) + (detail ? ' · ' + _escapeHtml(detail) : '') + '</span><br><button onclick="retryEmbed(\'' + vizId + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
     }
     return false;
   }
@@ -985,35 +582,11 @@ async function retryEmbed(vizId) {
   await injectToken(vizId);
 }
 
-// ─── Defaults (하드코딩 fallback) ───
-// 이 값은 /dashboards.json 도 없고 localStorage도 비어있을 때만 쓰입니다.
-function getBuiltinDefaults() {
-  return [
-    {
-      id: 'dash-' + Date.now(),
-      name: '월별 스트리밍 현황',
-      category: '스트리밍 분석',
-      url: '',
-      height: 800,
-      refresh: 'daily',
-      desc: '음원 플랫폼별 월별 스트리밍 추이 및 주요 아티스트 성과',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'dash-' + (Date.now()+1),
-      name: 'IP 수익 분석',
-      category: '매출',
-      url: '',
-      height: 750,
-      refresh: 'weekly',
-      desc: '보유 IP별 수익 분포 및 기간별 비교',
-      createdAt: new Date().toISOString()
-    }
-  ];
-}
-
 function saveToStorage() {
-  try { localStorage.setItem('tb_dashboards', JSON.stringify(dashboards)); } catch(e) {}
+  try {
+    localStorage.setItem('tb_dashboards', JSON.stringify(dashboards));
+    localStorage.setItem('tb_category_order', JSON.stringify(categoryOrder));
+  } catch(e) {}
 }
 
 // ─── 레거시 URL 마이그레이션 ───
@@ -1024,7 +597,6 @@ function saveToStorage() {
     if (d.url && !isPublicUrl(d.url) && d.url.includes('/#/')) {
       const fixed = normalizeTableauUrl(d.url);
       if (fixed !== d.url) {
-        console.log('[migrate] URL 정규화:', d.url, '→', fixed);
         d.url = fixed;
         changed = true;
       }
@@ -1065,73 +637,125 @@ overlay.addEventListener('click', () => {
   overlay.classList.remove('open');
 });
 
+// ─── 카테고리 그룹핑 ───
+// /dashboards.json 의 categories 배열(admin 페이지에서 관리)로 그룹 순서를 정하고,
+// 거기 없는 카테고리는 처음 등장한 순서대로 뒤에 붙입니다. 카테고리가 없는 대시보드는 "기타" 로 묶입니다.
+function getGroupedDashboards() {
+  const UNCATEGORIZED = '기타';
+  const seen = new Set();
+  const order = [];
+  categoryOrder.forEach(c => { if (c && !seen.has(c)) { seen.add(c); order.push(c); } });
+  dashboards.forEach(d => {
+    const c = (d.category || '').trim() || UNCATEGORIZED;
+    if (!seen.has(c)) { seen.add(c); order.push(c); }
+  });
+  if (seen.has(UNCATEGORIZED)) {
+    order.splice(order.indexOf(UNCATEGORIZED), 1);
+    order.push(UNCATEGORIZED);
+  }
+  return order
+    .map(key => ({
+      key,
+      label: key,
+      indices: dashboards.reduce((acc, d, i) => {
+        const c = (d.category || '').trim() || UNCATEGORIZED;
+        if (c === key) acc.push(i);
+        return acc;
+      }, []),
+    }))
+    .filter(g => g.indices.length > 0);
+}
+
+function getCollapsedGroups() {
+  try { return new Set(JSON.parse(localStorage.getItem('tb_collapsed_groups') || '[]')); }
+  catch { return new Set(); }
+}
+function setCollapsedGroups(set) {
+  try { localStorage.setItem('tb_collapsed_groups', JSON.stringify([...set])); } catch {}
+}
+function toggleGroup(key) {
+  const collapsed = getCollapsedGroups();
+  if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);
+  setCollapsedGroups(collapsed);
+  renderSidebarNav();
+}
+
 // ─── Render ───
 function render() {
   renderSidebarNav();
   renderDashboardViews();
-  renderDashboardList();
 }
 
 function renderSidebarNav() {
-  const nav = document.getElementById('dashboardNavList');
-  nav.innerHTML = dashboards.map((d, i) => `
-    <li class="nav-item">
-      <a href="#" class="nav-link ${currentView === 'dashboard-'+i ? 'active' : ''}"
-         data-view="dashboard-${i}" onclick="switchView('dashboard-${i}',this);return false;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7" rx="1"/>
-          <rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/>
-          <rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.name}</span>
-      </a>
-    </li>
+  const nav = document.getElementById('dashboardNavGroups');
+  const groups = getGroupedDashboards();
+  const collapsed = getCollapsedGroups();
+  nav.innerHTML = groups.map(g => `
+    <div class="nav-group ${collapsed.has(g.key) ? 'collapsed' : ''}">
+      <div class="nav-group-header" onclick="toggleGroup('${g.key.replace(/'/g, "\\'")}')">
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        <span class="label">${_escapeHtml(g.label)}</span>
+        <span class="nav-group-count">${g.indices.length}</span>
+      </div>
+      <ul class="nav-list">
+        ${g.indices.map(i => `
+          <li class="nav-item">
+            <a href="#" class="nav-link ${currentView === 'dashboard-'+i ? 'active' : ''}"
+               data-view="dashboard-${i}" onclick="switchView('dashboard-${i}',this);return false;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escapeHtml(dashboards[i].name)}</span>
+            </a>
+          </li>
+        `).join('')}
+      </ul>
+    </div>
   `).join('');
 }
 
 function renderDashboardViews() {
+  // 이전 뷰의 ResizeObserver 정리 (메모리 누수 방지)
+  _resizeObservers.forEach(ro => ro.disconnect());
+  _resizeObservers.clear();
+
   const container = document.getElementById('dashboardViews');
+
+  if (!dashboards.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        <div>표시할 대시보드가 아직 없습니다.</div>
+      </div>`;
+    return;
+  }
+
   container.innerHTML = dashboards.map((d, i) => `
     <section class="view-section ${currentView === 'dashboard-'+i ? 'active' : ''}" id="view-dashboard-${i}">
-      <div class="section-header">
-        <div>
-          <div class="section-title">${d.name}</div>
-          <div class="section-desc">${d.desc || d.category || ''}</div>
-        </div>
-      </div>
-      <div class="dashboard-grid">
-        <div class="dashboard-card">
-          <div class="card-header">
-            <div class="card-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            </div>
-            <div>
-              <div class="card-title">${d.name}</div>
-              <div class="card-subtitle">${d.category || '대시보드'}</div>
-            </div>
-            <span class="card-badge ${d.refresh === 'live' ? 'badge-live' : 'badge-updated'}">
-              ${d.refresh === 'live' ? '● LIVE' : d.refresh === 'daily' ? '일별 업데이트' : d.refresh === 'weekly' ? '주별 업데이트' : '수동'}
-            </span>
-            <div class="card-actions">
-              <button class="icon-btn" title="전체화면" onclick="openFullscreen('${d.id}')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-              </button>
-              <button class="icon-btn" title="편집" onclick="editDashboard('${d.id}')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              <button class="icon-btn" style="color:var(--color-error)" title="삭제" onclick="deleteDashboard('${d.id}')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="tableau-embed-wrapper" style="min-height:${d.height}px;" id="wrapper-${d.id}">
-            ${d.url ? renderEmbed(d) : renderPlaceholder(d.id)}
-          </div>
-        </div>
+      <div class="embed-fill" id="wrapper-${d.id}">
+        ${d.url ? renderEmbed(d) : renderPlaceholder()}
       </div>
     </section>
   `).join('');
+
+  // 각 wrapper 크기에 맞춰 임베드 높이를 채우고, 창 크기/사이드바 토글에도 자동으로 맞춥니다.
+  dashboards.forEach(d => {
+    if (!d.url) return;
+    const wrapper = document.getElementById('wrapper-' + d.id);
+    const embedEl = document.getElementById('viz-' + d.id);
+    if (!wrapper || !embedEl) return;
+    const apply = () => {
+      const h = Math.max(300, Math.floor(wrapper.clientHeight));
+      embedEl.setAttribute('height', String(h));
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(wrapper);
+    _resizeObservers.set(d.id, ro);
+  });
 
   // Viz 로드 이벤트 바인딩 + JWT 토큰 주입
   // Tableau Cloud 대시보드: /api/token 에서 JWT를 받아와 token 속성에 주입합니다.
@@ -1165,7 +789,6 @@ function renderDashboardViews() {
             stamp(evt);
             console.log('[tableau-viz:' + d.id + ']', evt, e && e.detail);
           }));
-        console.log('[tableau-viz:' + d.id + '] src =', viz.getAttribute('src'));
 
         // 단계별 로더 텍스트 전환 — "인증 중..." 이 데이터 로딩·렌더링 시간까지 모두 포함해 길어 보이던 문제를 해결
         viz.addEventListener('workbookready',      () => setStage('워크북 준비 완료', '데이터 렌더링 대기…'));
@@ -1179,7 +802,7 @@ function renderDashboardViews() {
         // 타임아웃 안전망 (60초로 늘림 — 큰 대시보드는 25초로 부족)
         setTimeout(() => {
           if (!loader.classList.contains('hidden') && !loader.innerHTML.includes('⚠️')) {
-            loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 응답 시간 초과 (60초)<br><span style="opacity:.85;">Tableau 서버 응답 지연 · 대시보드 크기 · 권한 확인</span><br><a href="/api/diag" target="_blank" style="color:var(--color-error);text-decoration:underline;margin-top:4px;display:inline-block;font-size:11px;">환경변수 진단 열기</a><br><button onclick="retryEmbed(\'viz-' + d.id + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
+            loader.innerHTML = '<div style="color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);text-align:center;line-height:1.5;">⚠️ 응답 시간 초과 (60초)<br><span style="opacity:.85;">Tableau 서버 응답 지연 · 대시보드 크기 · 권한 확인</span><br><button onclick="retryEmbed(\'viz-' + d.id + '\')" style="margin-top:8px;padding:4px 12px;border:1px solid var(--color-error);border-radius:4px;background:transparent;color:var(--color-error);cursor:pointer;font-size:11px;">다시 시도</button></div>';
           }
         }, 60000);
 
@@ -1232,29 +855,10 @@ function normalizeTableauUrl(url) {
   }
 }
 
-// URL 입력 시 실시간 힌트
-function previewUrlType(url) {
-  const hint = document.getElementById('urlTypeHint');
-  if (!hint) return;
-  if (!url) {
-    hint.style.color = '';
-    hint.textContent = 'Tableau Public: 대시보드 열기 → 공유 → 링크 복사';
-    return;
-  }
-  if (isPublicUrl(url)) {
-    hint.style.color = 'var(--color-success)';
-    hint.textContent = '✅ Tableau Public — 로그인 없이 누구나 열람 가능합니다';
-  } else if (url.includes('online.tableau.com') || url.includes('tableau.com')) {
-    hint.style.color = 'var(--color-warning)';
-    hint.textContent = '⚠️ Tableau Cloud — 방문자도 Tableau 로그인이 필요합니다. Public으로 게시하는 것을 권장합니다.';
-  } else {
-    hint.style.color = '';
-    hint.textContent = 'URL을 확인해주세요';
-  }
-}
-
 // ─── 임베드 렌더링 (URL 타입에 따라 분기) ───
+// height 는 초기값만 지정하고, 렌더 직후 ResizeObserver 가 wrapper 크기에 맞춰 다시 조정합니다.
 function renderEmbed(d) {
+  const initialHeight = Math.max(300, window.innerHeight - 56);
   if (isPublicUrl(d.url)) {
     // Tableau Public: ?:embed=y 파라미터로 iframe 임베딩 (로그인 불필요)
     const url = new URL(d.url);
@@ -1270,11 +874,8 @@ function renderEmbed(d) {
       <iframe
         id="viz-${d.id}"
         src="${url.toString()}"
-        width="100%"
-        height="${d.height}"
-        frameborder="0"
+        height="${initialHeight}"
         allowfullscreen
-        style="display:block;width:100%;border:none;"
         onload="document.getElementById('loading-${d.id}')?.classList.add('hidden')"
         onerror="(function(el){el.innerHTML='<div style=\\'color:var(--color-error);font-size:var(--text-xs);padding:var(--space-4);\\'>⚠️ 대시보드를 불러올 수 없습니다. URL을 확인하세요.</div>';})(document.getElementById('loading-${d.id}'))">
       </iframe>`;
@@ -1290,156 +891,39 @@ function renderEmbed(d) {
       <tableau-viz
         id="viz-${d.id}"
         src="${embedSrc}"
-        width="100%"
-        height="${d.height}"
+        height="${initialHeight}"
         hide-tabs
-        toolbar="hidden"
-        style="display:block;width:100%;">
+        toolbar="hidden">
       </tableau-viz>`;
   }
 }
 
-function renderPlaceholder(id) {
+function renderPlaceholder() {
   return `<div class="embed-placeholder">
     <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
       <rect x="3" y="3" width="18" height="18" rx="2"/>
       <path d="M3 9h18M9 21V9"/>
     </svg>
-    <div class="placeholder-title">대시보드 URL을 설정해주세요</div>
-    <div class="placeholder-desc">Tableau Public에 게시된 대시보드 URL을 입력하면 로그인 없이 누구나 열람할 수 있습니다</div>
-    <div class="placeholder-code">Tableau Public → 대시보드 열기
-→ 공유 버튼 → 링크 복사
-→ 대시보드 설정에 URL 입력</div>
-    <button class="btn btn-primary" style="margin-top:8px;" onclick="editDashboardById('${id}')">
-      URL 설정하기
-    </button>
+    <div class="placeholder-title">아직 URL이 설정되지 않았습니다</div>
+    <div class="placeholder-desc">관리자에게 대시보드 URL 등록을 요청해주세요.</div>
   </div>`;
-}
-
-function renderDashboardList() {
-  const el = document.getElementById('dashboardList');
-  if (!dashboards.length) {
-    el.innerHTML = '<div style="color:var(--color-text-muted);font-size:var(--text-sm);padding:var(--space-4) 0;">아직 등록된 대시보드가 없습니다.</div>';
-    return;
-  }
-  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:var(--space-3);">` + dashboards.map(d => `
-    <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius-md);">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:var(--text-sm);font-weight:600;">${d.name}</div>
-        <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.url || '⚠️ URL 미설정'}</div>
-      </div>
-      <span class="card-badge ${d.url ? 'badge-live' : ''}" style="${!d.url ? 'background:color-mix(in oklch, var(--color-warning) 15%, transparent);color:var(--color-warning);' : ''}">${d.url ? '연결됨' : 'URL 필요'}</span>
-      <button class="icon-btn" onclick="editDashboard('${d.id}')" title="편집">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-      <button class="icon-btn" style="color:var(--color-error)" onclick="deleteDashboard('${d.id}')" title="삭제">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-      </button>
-    </div>
-  `).join('') + '</div>';
 }
 
 // ─── Navigation ───
 function switchView(view, el) {
   currentView = view;
   document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-  // 대시보드 뷰 활성화
-  if (view.startsWith('dashboard-')) {
-    const idx = parseInt(view.split('-')[1]);
-    const section = document.getElementById('view-dashboard-' + idx);
-    if (section) section.classList.add('active');
-    const d = dashboards[idx];
-    document.getElementById('breadcrumbTitle').textContent = d ? d.name : '대시보드';
-  } else {
-    const section = document.getElementById('view-' + view);
-    if (section) section.classList.add('active');
-    document.getElementById('breadcrumbTitle').textContent = view === 'setup' ? '대시보드 설정' : '연동 가이드';
-  }
-  // Sidebar active
+  const idx = parseInt(view.split('-')[1]);
+  const section = document.getElementById('view-dashboard-' + idx);
+  if (section) section.classList.add('active');
+  const d = dashboards[idx];
+  document.getElementById('breadcrumbTitle').textContent = d ? d.name : '대시보드';
   document.querySelectorAll('.nav-link').forEach(a => {
     a.classList.toggle('active', a.dataset.view === view);
   });
   // Mobile: close sidebar
   sidebar.classList.remove('open');
   overlay.classList.remove('open');
-}
-
-// ─── Dashboard CRUD ───
-function addDashboard() {
-  switchView('setup', null);
-  document.querySelector('.nav-link[data-view="setup"]').classList.add('active');
-  document.querySelectorAll('.nav-link:not([data-view="setup"])').forEach(a => a.classList.remove('active'));
-  document.getElementById('breadcrumbTitle').textContent = '대시보드 설정';
-  resetForm();
-  editingId = null;
-  setTimeout(() => document.getElementById('dashName').focus(), 100);
-}
-
-function saveDashboard() {
-  const name = document.getElementById('dashName').value.trim();
-  const url = document.getElementById('dashUrl').value.trim();
-  const category = document.getElementById('dashCategory').value.trim();
-  const height = parseInt(document.getElementById('dashHeight').value) || 800;
-  const refresh = document.getElementById('dashRefresh').value;
-  const desc = document.getElementById('dashDesc').value.trim();
-
-  if (!name) { showToast('대시보드 이름을 입력해주세요', 'error'); return; }
-
-  if (editingId) {
-    const idx = dashboards.findIndex(d => d.id === editingId);
-    if (idx >= 0) {
-      dashboards[idx] = { ...dashboards[idx], name, url, category, height, refresh, desc };
-      showToast('대시보드가 수정되었습니다', 'success');
-    }
-    editingId = null;
-  } else {
-    dashboards.push({ id: 'dash-' + Date.now(), name, url, category, height, refresh, desc, createdAt: new Date().toISOString() });
-    showToast('대시보드가 추가되었습니다', 'success');
-  }
-  saveToStorage();
-  resetForm();
-  render();
-  // 추가된 대시보드로 이동
-  const newIdx = dashboards.findIndex(d => d.name === name);
-  if (newIdx >= 0) switchView('dashboard-' + newIdx, null);
-}
-
-function editDashboard(id) {
-  const d = dashboards.find(x => x.id === id);
-  if (!d) return;
-  editingId = id;
-  document.getElementById('dashName').value = d.name;
-  document.getElementById('dashUrl').value = d.url || '';
-  document.getElementById('dashCategory').value = d.category || '';
-  document.getElementById('dashHeight').value = d.height;
-  document.getElementById('dashRefresh').value = d.refresh;
-  document.getElementById('dashDesc').value = d.desc || '';
-  switchView('setup', null);
-  document.querySelectorAll('.nav-link').forEach(a => a.classList.toggle('active', a.dataset.view === 'setup'));
-  document.getElementById('breadcrumbTitle').textContent = '대시보드 설정';
-  setTimeout(() => document.getElementById('dashUrl').focus(), 100);
-}
-
-function editDashboardById(id) { editDashboard(id); }
-
-function deleteDashboard(id) {
-  if (!confirm('이 대시보드를 삭제하시겠습니까?')) return;
-  dashboards = dashboards.filter(d => d.id !== id);
-  saveToStorage();
-  currentView = dashboards.length ? 'dashboard-0' : 'setup';
-  render();
-  if (dashboards.length) switchView('dashboard-0', null);
-  showToast('대시보드가 삭제되었습니다', 'success');
-}
-
-function resetForm() {
-  document.getElementById('dashName').value = '';
-  document.getElementById('dashUrl').value = '';
-  document.getElementById('dashCategory').value = '';
-  document.getElementById('dashHeight').value = '800';
-  document.getElementById('dashRefresh').value = 'daily';
-  document.getElementById('dashDesc').value = '';
-  editingId = null;
 }
 
 function handleRefresh() {
@@ -1459,15 +943,6 @@ function handleRefresh() {
   showToast('새로고침 완료', 'success');
 }
 
-function openFullscreen(id) {
-  const d = dashboards.find(x => x.id === id);
-  if (d && d.url) {
-    window.open(d.url, '_blank', 'noopener,noreferrer');
-  } else {
-    showToast('URL이 설정되지 않았습니다', 'error');
-  }
-}
-
 // ─── Toast ───
 function showToast(msg, type = 'success') {
   const c = document.getElementById('toastContainer');
@@ -1483,124 +958,20 @@ function showToast(msg, type = 'success') {
   setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3000);
 }
 
-// ─── 공용 설정 Export/Reload 핸들러 ───
-// 현재 브라우저의 dashboards 배열을 /public/dashboards.json 과 동일한 형태로 직렬화합니다.
-function _serializeCurrentConfig() {
-  const payload = {
-    version: 1,
-    dashboards: (dashboards || []).map(d => ({
-      id: d.id,
-      name: d.name || '',
-      category: d.category || '',
-      url: d.url || '',
-      height: Number(d.height) || 800,
-      refresh: d.refresh || 'daily',
-      desc: d.desc || '',
-      createdAt: d.createdAt || new Date().toISOString(),
-    })),
-  };
-  return JSON.stringify(payload, null, 2);
-}
-
-// [내 설정을 JSON으로 복사] 버튼 핸들러
-async function exportConfigToClipboard() {
-  const json = _serializeCurrentConfig();
-  const ta = document.getElementById('configJsonView');
-  if (ta) ta.value = json;
-
-  // 클립보드 복사 시도 (HTTPS 또는 localhost 필요)
-  let copied = false;
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(json);
-      copied = true;
-    } else if (ta) {
-      // fallback: textarea 내용 선택 후 execCommand
-      ta.removeAttribute('readonly');
-      ta.focus();
-      ta.select();
-      try { copied = document.execCommand('copy'); } catch { copied = false; }
-      ta.setAttribute('readonly', '');
-    }
-  } catch (e) {
-    console.warn('[export] clipboard write failed:', e);
-    copied = false;
-  }
-
-  if (copied) {
-    showToast('JSON이 클립보드에 복사되었습니다. GitHub에서 public/dashboards.json 에 붙여넣으세요');
-  } else {
-    showToast('아래 JSON을 수동으로 복사해 주세요', 'error');
-    if (ta) { ta.focus(); ta.select(); }
-  }
-}
-
-// [dashboards.json 다운로드] 버튼 핸들러
-function downloadConfigJson() {
-  const json = _serializeCurrentConfig();
-  const ta = document.getElementById('configJsonView');
-  if (ta) ta.value = json;
-
-  try {
-    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'dashboards.json';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 0);
-    showToast('dashboards.json 다운로드를 시작했습니다');
-  } catch (e) {
-    console.error('[export] download failed:', e);
-    showToast('다운로드에 실패했습니다: ' + (e && e.message ? e.message : e), 'error');
-  }
-}
-
-// [서버 설정 다시 불러오기] 버튼 핸들러
-async function reloadFromServer() {
-  const ok = confirm('서버(/dashboards.json)에서 대시보드 목록을 다시 불러옵니다.\n현재 이 브라우저에 저장된 변경사항은 덮어써집니다. 계속할까요?');
-  if (!ok) return;
-
-  try {
-    const shared = await loadSharedConfig();
-    if (!shared || shared.length === 0) {
-      showToast('서버에 공유된 대시보드가 없습니다 (dashboards.json 비어있음)', 'error');
-      return;
-    }
-    dashboards = shared;
-    saveToStorage();
-    render();
-    switchView(dashboards.length ? 'dashboard-0' : 'setup', null);
-    showToast(`서버에서 ${shared.length}개 대시보드를 불러왔습니다`);
-  } catch (e) {
-    console.error('[reload] failed:', e);
-    showToast('서버 설정 불러오기에 실패했습니다', 'error');
-  }
-}
-
 // ─── Bootstrap 로딩 상태 표시 (첫 방문자 전용) ───
-// 로컬 데이터가 없어 '설정' 탭으로 튀어 보이는 현상을 막기 위해, 공용 설정이 도착할 때까지 중립 로딩 화면을 띄웁니다.
 function renderBootstrapLoading() {
-  // 스피너 애니메이션 스타일 주입 (중복 방지)
   if (!document.getElementById('bootstrap-loading-style')) {
     const st = document.createElement('style');
     st.id = 'bootstrap-loading-style';
     st.textContent = `
       @keyframes tp-spin{to{transform:rotate(360deg)}}
-      #bootstrap-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:var(--space-4);color:var(--color-text-muted);}
+      #bootstrap-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:var(--space-4);color:var(--color-text-muted);}
       #bootstrap-loading .sp{width:40px;height:40px;border:3px solid var(--color-border);border-top-color:var(--color-primary);border-radius:50%;animation:tp-spin 0.8s linear infinite;}
     `;
     document.head.appendChild(st);
   }
-  // 기존 뷰 모두 숨김
-  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
   const body = document.querySelector('.page-body');
   if (!body) return;
-  // 기존 로딩 요소 제거 후 재생성
   const existing = document.getElementById('bootstrap-loading');
   if (existing) existing.remove();
   const div = document.createElement('div');
@@ -1613,8 +984,6 @@ function renderBootstrapLoading() {
     </div>
   `;
   body.appendChild(div);
-  const t = document.getElementById('breadcrumbTitle');
-  if (t) t.textContent = '대시보드';
 }
 
 function removeBootstrapLoading() {
@@ -1624,47 +993,37 @@ function removeBootstrapLoading() {
 
 // ─── Init ───
 // 1) 첫 렌더
-//    - 로컬 데이터가 있으면 즉시 대시보드 탭 표시 (재방문자)
-//    - 로컬 데이터가 없으면 '설정' 탭이 아닌 중립 로딩 화면 표시 (첫 방문자 전용)
+//    - 로컬 캐시가 있으면 즉시 대시보드 탭 표시 (재방문자)
+//    - 로컬 캐시가 없으면 중립 로딩 화면 표시 (첫 방문자 전용)
 if (_hadLocal) {
   render();
   switchView('dashboard-0', null);
 } else {
-  render();                    // 사이드바 nav 등 레이아웃만 먼저 그림
-  renderBootstrapLoading();    // page-body 중앙에 로딩 스피너
+  renderSidebarNav();
+  renderBootstrapLoading();
 }
 
 // 2) 공용 설정(/dashboards.json) + JWT 토큰을 병렬로 프리페치
-//    — 대시보드 뷰로 전환하기 전에 토큰이 이미 캐시에 올라가 있으면 첫 embed 가 훨씬 빨라집니다.
 _jwt.fetch().catch(err => console.warn('[bootstrap] token warmup failed:', err && err.message));
 
 (async function bootstrapSharedConfig() {
   const shared = await loadSharedConfig();
 
-  // 공용 설정이 있으면 그걸 적용
-  if (shared && shared.length) {
-    if (!_hadLocal) {
-      dashboards = shared;
-      saveToStorage();
-      removeBootstrapLoading();
-      render();
-      switchView('dashboard-0', null);
-    }
-    return;
-  }
-
-  // 공용 설정 없음
-  if (!_hadLocal) {
-    // 로컬도 없고 공용도 없음 — 내장 기본값(이름만 있는 placeholder) 사용
-    // URL 이 비어있으므로 이 경우에만 '설정' 탭을 열어 바로 추가하도록 유도
-    dashboards = getBuiltinDefaults();
+  if (shared && shared.dashboards.length) {
+    dashboards = shared.dashboards;
+    categoryOrder = shared.categoryOrder;
     saveToStorage();
     removeBootstrapLoading();
     render();
-    switchView('setup', null);
+    switchView('dashboard-0', null);
+    return;
   }
-  // 로컬에 이미 커스터마이즈가 있으면 자동 덮어쓰지 않음
-  // (설정 탭의 "서버 설정 불러오기" 버튼으로 수동 갱신 가능)
+
+  if (!_hadLocal) {
+    removeBootstrapLoading();
+    dashboards = [];
+    render();
+  }
 })();
 </script>
 </body>

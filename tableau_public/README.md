@@ -1,21 +1,31 @@
-# Tableau Analytics Portal — 배포 가이드
+# BeyondMusic Dashboards — 배포 가이드
 
-방문자 로그인 없이 Tableau Cloud 대시보드를 임베딩하는 포털입니다.
+방문자 로그인 없이 Tableau 대시보드를 임베딩하는 뷰어 포털입니다.
 Vercel 서버리스 함수가 JWT를 발급하므로 Secret Key가 브라우저에 노출되지 않습니다.
+
+뷰어(`/`)는 대시보드를 그룹별로 보기만 하는 화면이고, 관리(`/admin`)는 비밀번호로 보호된
+대시보드·그룹 관리 화면입니다.
 
 ---
 
 ## 구조
 
 ```
-tableau-vercel-project/
+tableau_public/
 ├── public/
-│   └── index.html          # 포털 프론트엔드
+│   ├── index.html           # 뷰어 프론트엔드 (일반 방문자, 로그인 불필요)
+│   ├── admin.html            # 관리자 프론트엔드 (비밀번호 필요)
+│   └── dashboards.json       # 공유 대시보드/그룹 설정 (관리자가 내보낸 JSON을 커밋)
 ├── api/
-│   └── token.js            # JWT 발급 서버리스 함수 (Vercel)
-├── vercel.json             # Vercel 라우팅 설정
-├── .env.example            # 환경변수 예시
-└── .gitignore
+│   ├── token.js               # Tableau JWT 발급 (Vercel)
+│   ├── admin-login.js         # 관리자 로그인 (비밀번호 검증 + 세션 쿠키 발급)
+│   ├── admin-session.js       # 관리자 세션 확인
+│   ├── admin-logout.js        # 관리자 로그아웃
+│   └── diag.js                 # 환경변수 진단
+├── lib/
+│   └── adminAuth.js            # 관리자 세션 쿠키 서명/검증 헬퍼
+├── vercel.json                 # Vercel 라우팅 설정
+└── .env.example
 ```
 
 ---
@@ -25,7 +35,7 @@ tableau-vercel-project/
 1. Tableau Cloud 관리자 계정으로 로그인
 2. 상단 메뉴 **설정(Settings)** → **Connected Apps** 탭 이동
 3. **새 Connected App 만들기** 클릭
-   - 이름: `Analytics Portal` (자유)
+   - 이름: `BeyondMusic Dashboards` (자유)
    - 접근 레벨: **모든 프로젝트** 또는 원하는 프로젝트 지정
 4. 생성된 앱 클릭 → **Client ID** 복사해두기
 5. **Secrets** 탭 → **새 Secret 생성**
@@ -39,7 +49,6 @@ tableau-vercel-project/
 ## Step 2 — GitHub 저장소 생성
 
 ```bash
-# 이 폴더를 GitHub에 올립니다
 git init
 git add .
 git commit -m "initial commit"
@@ -71,35 +80,38 @@ Vercel 대시보드 → 프로젝트 선택 → **Settings** → **Environment V
 | `TABLEAU_SECRET_VALUE` | Step 1에서 복사한 Secret Value |
 | `TABLEAU_USERNAME` | 본인 Tableau 계정 이메일 |
 | `TOKEN_AUDIENCE` | 배포된 Vercel URL (예: `https://tableau-portal-xxx.vercel.app`) |
+| `ADMIN_PASSWORD` | `/admin` 로그인에 사용할 비밀번호 (직접 정하세요) |
+| `ADMIN_SECRET` | 세션 쿠키 서명용 임의의 긴 문자열 (예: `openssl rand -hex 32`) |
 
 등록 후 **Redeploy** (Deployments 탭 → 최신 배포 우클릭 → Redeploy)
 
+`ADMIN_PASSWORD` / `ADMIN_SECRET`이 없으면 `/admin` 로그인이 항상 실패합니다.
+
 ---
 
-## Step 5 — 대시보드 URL 등록
+## Step 5 — 대시보드·그룹 등록
 
-1. 배포된 포털 접속
-2. 상단 **설정** 탭 클릭
-3. **대시보드 설정**에서 Tableau Cloud URL 입력 후 저장
-   - URL 형식: `https://prod-apnortheast-a.online.tableau.com/#/site/SITE/views/WORKBOOK/DASHBOARD`
-   - Tableau Cloud에서 대시보드 열기 → 공유 버튼 → **링크 복사**
+1. 배포된 사이트에서 `/admin` 접속 후 `ADMIN_PASSWORD`로 로그인
+2. **대시보드 추가** 버튼으로 이름·그룹·URL 등록 (Tableau Public URL 권장)
+3. **그룹(카테고리)** 패널에서 그룹 순서·이름을 원하는 대로 구성
+4. **팀과 공유하기** 탭 → **JSON 복사** → GitHub에서
+   `tableau_public/public/dashboards.json` 내용을 교체하고 commit
+5. Vercel이 자동 재배포되면 뷰어(`/`)의 모든 방문자에게 동일한 대시보드·그룹이 보입니다
+
+> 그룹/대시보드 변경사항은 현재 수동 커밋으로 반영됩니다(자동 반영 아님). 브라우저를 닫아도
+> 작업 중이던 내용은 `/admin` 화면의 임시 저장(브라우저 로컬 저장소)에 남아있어 이어서 작업할 수 있습니다.
 
 ---
 
 ## 동작 원리
 
 ```
-방문자 브라우저
-  │
-  ├─ index.html 로드 (Vercel 정적 파일)
-  │
-  ├─ POST /api/token  →  Vercel 함수 (Secret Key 안전 보관)
-  │                           │
-  │                    JWT 서명 후 반환 (유효 5분)
-  │
-  └─ <tableau-viz token="JWT">  →  Tableau Cloud 인증 통과
-                                          │
-                                   대시보드 렌더링 ✅
+방문자 브라우저 (/)                      관리자 브라우저 (/admin)
+  │                                          │
+  ├─ index.html 로드                        ├─ 비밀번호 로그인 → 세션 쿠키
+  ├─ GET /dashboards.json (그룹·대시보드)    ├─ 대시보드/그룹 편집 (로컬 임시 저장)
+  ├─ POST /api/token → JWT 발급             ├─ JSON 복사 → GitHub에 커밋
+  └─ <tableau-viz token="JWT">              └─ Vercel 재배포 → 뷰어에 반영
 ```
 
 JWT는 5분마다 자동 갱신되며, Secret Key는 절대 브라우저에 노출되지 않습니다.
@@ -126,3 +138,4 @@ Tableau 라이선스가 없는 직원도 열람하게 하려면:
 | `⚠️ 대시보드 로딩 실패` | URL 오류 또는 Connected App 비활성 | URL 및 Connected App 활성화 확인 |
 | 빈 화면 | Site 이름 불일치 | `TABLEAU_SITE_NAME` 재확인 |
 | CORS 오류 | `TOKEN_AUDIENCE` 불일치 | 배포 URL과 정확히 일치하도록 수정 |
+| `/admin` 로그인이 항상 실패 | `ADMIN_PASSWORD`/`ADMIN_SECRET` 미등록 | Vercel 환경변수 등록 후 Redeploy |
