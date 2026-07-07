@@ -1,4 +1,4 @@
-# BeyondMusic Dashboards — 배포 가이드
+# Beyond Music Dashboards — 배포 가이드
 
 방문자 로그인 없이 Tableau 대시보드를 임베딩하는 뷰어 포털입니다.
 Vercel 서버리스 함수가 JWT를 발급하므로 Secret Key가 브라우저에 노출되지 않습니다.
@@ -35,7 +35,7 @@ tableau_public/
 1. Tableau Cloud 관리자 계정으로 로그인
 2. 상단 메뉴 **설정(Settings)** → **Connected Apps** 탭 이동
 3. **새 Connected App 만들기** 클릭
-   - 이름: `BeyondMusic Dashboards` (자유)
+   - 이름: `Beyond Music Dashboards` (자유)
    - 접근 레벨: **모든 프로젝트** 또는 원하는 프로젝트 지정
 4. 생성된 앱 클릭 → **Client ID** 복사해두기
 5. **Secrets** 탭 → **새 Secret 생성**
