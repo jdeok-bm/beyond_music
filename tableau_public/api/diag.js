@@ -16,12 +16,13 @@ module.exports = function handler(req, res) {
     'TOKEN_AUDIENCE',
     'ADMIN_PASSWORD',
     'ADMIN_SECRET',
+    'GITHUB_TOKEN',
   ];
 
   const env = {};
   keys.forEach(k => {
     const v = process.env[k];
-    const isSecret = k === 'TABLEAU_SECRET_VALUE' || k === 'ADMIN_PASSWORD' || k === 'ADMIN_SECRET';
+    const isSecret = k === 'TABLEAU_SECRET_VALUE' || k === 'ADMIN_PASSWORD' || k === 'ADMIN_SECRET' || k === 'GITHUB_TOKEN';
     env[k] = v
       ? { present: true, length: v.length, preview: isSecret ? null : v.slice(0, 8) }
       : { present: false };
