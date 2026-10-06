@@ -60,6 +60,7 @@ module.exports = async function handler(req, res) {
       url: String(d.url || ''),
       height: Number(d.height) || 800,
       refresh: String(d.refresh || 'daily'),
+      tabs: !!d.tabs,
       desc: String(d.desc || ''),
       createdAt: String(d.createdAt || new Date().toISOString()),
     })),

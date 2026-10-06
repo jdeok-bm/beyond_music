@@ -493,6 +493,13 @@
           <input type="number" class="form-input" id="dashHeight" value="800" min="400" max="3000">
         </div>
         <div class="form-group full-width">
+          <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;font-size:var(--text-sm);">
+            <input type="checkbox" id="dashTabs" style="width:15px;height:15px;accent-color:var(--color-primary);">
+            워크북 시트 탭 표시
+          </label>
+          <div class="form-hint">워크북이 여러 시트(탭)로 구성된 경우, 대시보드 상단에 탭 바를 노출해 페이지를 오갈 수 있게 합니다.</div>
+        </div>
+        <div class="form-group full-width">
           <label class="form-label" for="dashDesc">설명 (선택)</label>
           <textarea class="form-textarea" id="dashDesc" placeholder="이 대시보드에 대한 간략한 설명"></textarea>
         </div>
@@ -876,6 +883,7 @@ function openAddModal() {
   document.getElementById('dashUrl').value = '';
   document.getElementById('dashRefresh').value = 'daily';
   document.getElementById('dashHeight').value = '800';
+  document.getElementById('dashTabs').checked = false;
   document.getElementById('dashDesc').value = '';
   document.getElementById('dashName').classList.remove('invalid');
   document.getElementById('dashUrl').classList.remove('invalid');
@@ -896,6 +904,7 @@ function openEditModal(id) {
   document.getElementById('dashUrl').value = d.url || '';
   document.getElementById('dashRefresh').value = d.refresh || 'daily';
   document.getElementById('dashHeight').value = d.height || 800;
+  document.getElementById('dashTabs').checked = !!d.tabs;
   document.getElementById('dashDesc').value = d.desc || '';
   previewUrlType(d.url || '');
   renderCategoryDatalist();
@@ -940,6 +949,7 @@ function saveDashboard() {
   const url = document.getElementById('dashUrl').value.trim();
   const refresh = document.getElementById('dashRefresh').value;
   const height = parseInt(document.getElementById('dashHeight').value) || 800;
+  const tabs = document.getElementById('dashTabs').checked;
   const desc = document.getElementById('dashDesc').value.trim();
 
   if (category) {
@@ -949,10 +959,10 @@ function saveDashboard() {
 
   if (editingId) {
     const idx = dashboards.findIndex(d => d.id === editingId);
-    if (idx >= 0) dashboards[idx] = { ...dashboards[idx], name, category, url, refresh, height, desc };
+    if (idx >= 0) dashboards[idx] = { ...dashboards[idx], name, category, url, refresh, height, tabs, desc };
     showToast('대시보드가 수정되었습니다');
   } else {
-    dashboards.push({ id: 'dash-' + Date.now(), name, category, url, refresh, height, desc, createdAt: new Date().toISOString() });
+    dashboards.push({ id: 'dash-' + Date.now(), name, category, url, refresh, height, tabs, desc, createdAt: new Date().toISOString() });
     showToast('대시보드가 추가되었습니다');
   }
   saveDraft();
@@ -987,6 +997,7 @@ function _serializeCurrentConfig() {
       url: d.url || '',
       height: Number(d.height) || 800,
       refresh: d.refresh || 'daily',
+      tabs: !!d.tabs,
       desc: d.desc || '',
       createdAt: d.createdAt || new Date().toISOString(),
     })),
