@@ -486,6 +486,7 @@ async function loadSharedConfig() {
         url: normalizeTableauUrl(d.url || ''),
         height: Number(d.height) || 800,
         refresh: d.refresh || 'daily',
+        tabs: !!d.tabs,
         desc: d.desc || '',
         createdAt: d.createdAt || new Date().toISOString(),
       })),
@@ -903,6 +904,7 @@ function normalizeTableauUrl(url) {
 
 // ─── 임베드 렌더링 (URL 타입에 따라 분기) ───
 // height 는 초기값만 지정하고, 렌더 직후 ResizeObserver 가 wrapper 크기에 맞춰 다시 조정합니다.
+// d.tabs 가 true 이면 워크북의 시트 탭 바를 노출해, 한 항목 안에서 여러 페이지를 오갈 수 있습니다.
 function renderEmbed(d) {
   const initialHeight = Math.max(300, window.innerHeight - 56);
   if (isPublicUrl(d.url)) {
@@ -910,7 +912,7 @@ function renderEmbed(d) {
     const url = new URL(d.url);
     url.searchParams.set(':embed', 'y');
     url.searchParams.set(':showVizHome', 'no');
-    url.searchParams.set(':tabs', 'no');
+    url.searchParams.set(':tabs', d.tabs ? 'yes' : 'no');
     url.searchParams.set(':toolbar', 'no');
     return `
       <div class="tableau-loading" id="loading-${d.id}">
@@ -938,7 +940,7 @@ function renderEmbed(d) {
         id="viz-${d.id}"
         src="${embedSrc}"
         height="${initialHeight}"
-        hide-tabs
+        ${d.tabs ? '' : 'hide-tabs'}
         toolbar="hidden">
       </tableau-viz>`;
   }
